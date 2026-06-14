@@ -190,6 +190,70 @@ body.landing .main{display:none;}
 .homebtn{display:inline-flex;align-items:center;gap:7px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-size:12px;color:var(--ink);cursor:pointer;margin-bottom:10px;}
 .homebtn:hover{border-color:var(--accent);color:var(--accent);}
 .brand{cursor:pointer;}
+
+/* --- page transition animation --- */
+@keyframes pageIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+.page.on{animation:pageIn .28s cubic-bezier(.22,.61,.36,1);}
+@keyframes cardIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+body.landing .lp-card{animation:cardIn .4s cubic-bezier(.22,.61,.36,1) both;}
+body.landing .lp-card:nth-child(1){animation-delay:.03s;}
+body.landing .lp-card:nth-child(2){animation-delay:.08s;}
+body.landing .lp-card:nth-child(3){animation-delay:.13s;}
+body.landing .lp-card:nth-child(4){animation-delay:.18s;}
+.main{transition:opacity .2s ease;}
+@media (prefers-reduced-motion: reduce){
+  .page.on,body.landing .lp-card,.main{animation:none!important;transition:none!important;}
+}
+/* --- recalc value-change flash --- */
+@keyframes flashUp{0%{background:#fff6d6;}100%{background:transparent;}}
+.flash{animation:flashUp .6s ease;}
+.ro,.bigres .v{transition:color .15s ease;}
+/* --- visible focus rings for keyboard users --- */
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,
+.lp-card:focus-visible,.vcard:focus-visible,[tabindex]:focus-visible{
+  outline:2px solid var(--accent);outline-offset:2px;border-radius:6px;
+}
+.lp-card:focus-visible{outline-offset:4px;}
+/* --- simulator loading / offline overlay --- */
+.simhost{position:relative;}
+.simloader{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#f4f6fa;color:var(--mut);z-index:2;}
+.simloader.hidden{display:none;}
+.spinner{width:34px;height:34px;border:3px solid #d7e2f0;border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.simloader .msg{font-size:13px;}
+.simloader .sub{font-size:12px;color:var(--mut);max-width:360px;text-align:center;line-height:1.5;}
+.simloader .retry{background:#fff;border:1px solid var(--line);border-radius:8px;padding:7px 14px;font-size:12px;cursor:pointer;color:var(--ink);}
+.simloader .retry:hover{border-color:var(--accent);color:var(--accent);}
+/* --- calculator data-source banner --- */
+.srcbanner{display:none;align-items:center;justify-content:space-between;gap:12px;background:#eef5ff;border:1px solid #cfe0fb;border-radius:10px;padding:9px 14px;margin-bottom:14px;font-size:13px;color:#19457e;}
+.srcbanner.on{display:flex;}
+.srcbanner .clr{background:#fff;border:1px solid #cfe0fb;border-radius:7px;padding:5px 11px;font-size:12px;cursor:pointer;color:#19457e;}
+.srcbanner .clr:hover{border-color:var(--accent);color:var(--accent);}
+/* --- handoff hint above slot table --- */
+.tablehint{font-size:12px;color:var(--mut);margin:0 0 10px;display:flex;align-items:center;gap:7px;}
+.tablehint b{color:var(--accent);}
+/* --- collapsible methodology --- */
+.method{border:1px solid var(--line);border-radius:10px;background:var(--panel);margin-bottom:18px;overflow:hidden;}
+.method summary{cursor:pointer;padding:12px 16px;font-weight:600;font-size:13.5px;list-style:none;display:flex;align-items:center;gap:8px;}
+.method summary::-webkit-details-marker{display:none;}
+.method summary::before{content:'▸';color:var(--mut);transition:transform .15s;}
+.method[open] summary::before{transform:rotate(90deg);}
+.method .mbody{padding:0 16px 14px;font-size:13px;color:var(--mut);line-height:1.6;}
+.method .mbody code{background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:1px 5px;font-size:12px;color:var(--ink);}
+/* --- mobile / narrow screen --- */
+@media (max-width:760px){
+  .sidebar{width:64px;}
+  .sidebar .brand .t,.sidebar .brand .s,.nav a span,.nav .grp,.sidebar .foot{display:none;}
+  .nav a{justify-content:center;padding:12px 0;}
+  .controls,.searchrow{flex-direction:column;align-items:stretch;}
+  .ctl input[type=range]{width:100%;}
+  .calcgrid{grid-template-columns:1fr;}
+  .tablewrap{overflow-x:auto;}
+  table{min-width:640px;}
+  .lp-hero h1{font-size:28px;}
+  .wrap{padding:16px 14px;}
+  header{padding:14px 16px;}
+}
 </style>
 </head>
 <body class="landing">
@@ -282,6 +346,7 @@ body.landing .main{display:none;}
       </div>
       <div class="panel" id="rotPanel"><h2>Service rotation <span class="note" id="rotNote"></span></h2><div id="rotBody"></div></div>
       <div class="panel"><h2>Detail — slot cost &amp; cost breakdown <span class="note" id="tblNote"></span></h2>
+        <div class="tablehint">Tip: click <b>→ Calc</b> on any vessel to open it in the Slot Cost Calculator with its full cost detail.</div>
         <div class="tablewrap"><table id="tbl"><thead><tr>
           <th class="l" data-s="service">Service</th><th class="l" data-s="vessel">Vessel</th><th data-s="capacity">Capacity (TEU)</th><th data-s="days">Days</th><th data-s="bunkerNow">Bunker cost</th><th data-s="totalNow">Total op. cost</th><th data-s="slotBase">Slot (default)</th><th data-s="slotNow">Slot (current)</th><th data-s="delta">Δ vs default</th><th>Action</th>
         </tr></thead><tbody></tbody></table></div>
@@ -344,12 +409,36 @@ body.landing .main{display:none;}
           <a class="openext" href="https://allan-claude.github.io/Schedule-Simulation/shipping_schedule.html" target="_blank" rel="noopener">Open in new tab ↗</a>
         </span>
       </div>
-      <iframe class="simframe" id="simFrame" title="Voyage Schedule Simulator" loading="lazy"
-        referrerpolicy="no-referrer" src="about:blank" data-src="https://allan-claude.github.io/Schedule-Simulation/shipping_schedule.html"></iframe>
+      <div class="simhost">
+        <div class="simloader" id="simLoader">
+          <div class="spinner" aria-hidden="true"></div>
+          <div class="msg">Loading the voyage simulator…</div>
+          <div class="sub" id="simLoaderSub">This loads the in-house simulator hosted on your GitHub. First load may take a few seconds.</div>
+          <button class="retry" id="simRetry" style="display:none">Retry</button>
+        </div>
+        <iframe class="simframe" id="simFrame" title="Voyage Schedule Simulator" loading="lazy"
+          referrerpolicy="no-referrer" src="about:blank" data-src="https://allan-claude.github.io/Schedule-Simulation/shipping_schedule.html"></iframe>
+      </div>
     </div>
 
     <!-- ===== PAGE 4 : SLOT COST CALCULATOR ===== -->
     <div class="page" id="page-calc"><div class="wrap">
+
+      <div class="srcbanner" id="srcBanner">
+        <span id="srcBannerText"></span>
+        <button class="clr" id="srcBannerClear">Reset to blank</button>
+      </div>
+
+      <details class="method">
+        <summary>How the slot cost is calculated</summary>
+        <div class="mbody">
+          <b>Slot cost = (Charter hire + Bunker + Port charges + Misc) ÷ effective capacity.</b><br>
+          Bunker = Σ (fuel MT × price) across LSFO, HSFO and MGO. Charter hire = daily rate × round-trip days.<br><br>
+          <b>Market vs Daily basis</b> (on the Vessel Slot Cost page): <code>Market (Weekly PL)</code> uses the full weekly charter cost; <code>Daily (Adjusted PL)</code> uses the adjusted daily-equivalent rate. Same formula, different charter input — both reconcile to the source workbook.<br><br>
+          <b>Monsoon</b> scenarios (Bunker History) reflect higher fuel burn and longer round-trip days during monsoon season versus the no-monsoon baseline.<br><br>
+          <b>Per FEU</b> in the Excel summary = per-TEU slot cost × 2 (one FEU = two TEU).
+        </div>
+      </details>
 
       <div class="calcgrid">
         <div class="panel">
@@ -453,8 +542,10 @@ const fmt0 = n => (n==null?'—':n.toLocaleString('en-US',{maximumFractionDigits
 const usd = n => (n<0?'-$':'$')+Math.abs(n).toLocaleString('en-US',{maximumFractionDigits:0});
 
 /* ---------- navigation ---------- */
+let currentPage='slot';
 function showPage(id){
-  document.querySelectorAll('.page').forEach(p=>p.classList.toggle('on',p.id==='page-'+id));
+  currentPage=id;
+  document.querySelectorAll('.page').forEach(p=>{const on=p.id==='page-'+id; if(on&&!p.classList.contains('on')){p.classList.remove('on');void p.offsetWidth;} p.classList.toggle('on',on);});
   document.querySelectorAll('.nav a').forEach(a=>a.classList.toggle('on',a.dataset.page===id));
   const titles={slot:'Vessel Slot Cost',bunker:'Bunker Simulation History',sim:'Voyage Schedule Simulator',calc:'Slot Cost Calculator'};
   const subs={
@@ -465,8 +556,29 @@ function showPage(id){
   };
   document.getElementById('pageTitle').textContent=titles[id]||'';
   document.getElementById('pageSub').textContent=subs[id]||'';
-  if(id==='sim'){const f=document.getElementById('simFrame'); if(f && !f.dataset.loaded){ f.src=f.dataset.src; f.dataset.loaded='1'; }}
+  if(id==='sim'){ loadSimFrame(); }
   if(id==='calc'){ if(typeof recalcSlot==='function') recalcSlot(); }
+  if(typeof syncHash==='function') syncHash();
+}
+// --- simulator iframe load + offline handling ---
+let simWatchdog=null;
+function loadSimFrame(){
+  const f=document.getElementById('simFrame'), loader=document.getElementById('simLoader');
+  if(!f) return;
+  if(f.dataset.loaded==='1' && f.contentWindow){ if(loader) loader.classList.add('hidden'); return; }
+  if(loader){ loader.classList.remove('hidden'); document.getElementById('simRetry').style.display='none';
+    document.querySelector('#simLoader .msg').textContent='Loading the voyage simulator…';
+    document.getElementById('simLoaderSub').textContent='This loads the in-house simulator hosted on your GitHub. First load may take a few seconds.'; }
+  f.onload=()=>{ let ok=false; try{ ok=!!(f.contentWindow && f.contentWindow.location.href.indexOf('Schedule-Simulation')>-1); }catch(e){ ok=true; }
+    if(loader) loader.classList.add('hidden'); if(simWatchdog){clearTimeout(simWatchdog);simWatchdog=null;} };
+  f.src=f.dataset.src; f.dataset.loaded='1';
+  if(simWatchdog) clearTimeout(simWatchdog);
+  simWatchdog=setTimeout(()=>{ // if still not loaded, show offline/retry
+    let loadedOk=false; try{ loadedOk=!!(f.contentWindow && f.contentWindow.location.href.indexOf('Schedule-Simulation')>-1); }catch(e){ loadedOk=false; }
+    if(!loadedOk && loader){ document.querySelector('#simLoader .msg').textContent='Simulator is taking a while to load';
+      document.getElementById('simLoaderSub').textContent='If it doesn’t appear, the in-house simulator site may be temporarily unreachable. You can open it in a new tab, or enter voyage values directly in the Slot Cost Calculator.';
+      document.getElementById('simRetry').style.display='inline-block'; }
+  }, 9000);
 }
 
 /* ===================== PAGE 1 : SLOT COST ===================== */
@@ -707,10 +819,12 @@ document.querySelectorAll('.nav a').forEach(a=>a.onclick=e=>{e.preventDefault();
 
 // ----- Landing / module navigation -----
 function openModule(id){ document.body.classList.remove('landing'); showPage(id); window.scrollTo(0,0); }
-function goHome(){ document.body.classList.add('landing'); window.scrollTo(0,0); }
-document.querySelectorAll('.lp-card[data-go]').forEach(c=>c.onclick=()=>openModule(c.dataset.go));
+function goHome(){ document.body.classList.add('landing'); currentPage='home'; if(typeof syncHash==='function') syncHash(); window.scrollTo(0,0); }
+document.querySelectorAll('.lp-card[data-go]').forEach(c=>{ c.setAttribute('tabindex','0'); c.setAttribute('role','button');
+  c.onclick=()=>openModule(c.dataset.go); c.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openModule(c.dataset.go);}}; });
 const homeBtn=document.getElementById('homeBtn'); if(homeBtn) homeBtn.onclick=goHome;
 const brand=document.querySelector('.sidebar .brand'); if(brand) brand.onclick=goHome;
+const simRetryBtn=document.getElementById('simRetry'); if(simRetryBtn) simRetryBtn.onclick=()=>{const f=document.getElementById('simFrame'); f.dataset.loaded=''; loadSimFrame();};
 
 function initHist(){ buildVesselCards(); setMode('browse'); }
 
@@ -940,7 +1054,7 @@ xlSyncFromInputs();
 // ----- Send a vessel from the Slot Cost table into the Slot Cost Calculator -----
 function sendVesselToCalc(svc, ves){
   const d=DATA.find(x=>String(x.service)===String(svc) && String(x.vessel)===String(ves));
-  if(!d){ showPage('calc'); return; }
+  if(!d){ document.body.classList.remove('landing'); showPage('calc'); return; }
   const mkt = (basis==='market'); // follow the current cost-basis toggle on the slot page
   cg('cName').value = d.service+' · '+d.vessel + (mkt?'  (Market)':'  (Daily)');
   cg('cCap').value  = d.capacity;
@@ -962,6 +1076,9 @@ function sendVesselToCalc(svc, ves){
   if(typeof xlSyncFromInputs==='function'){ xlSyncFromInputs(); if(xlCols[0]) xlCols[0].name=d.service; renderXl(); }
   showPage('calc');
   cg('calcParseTags').innerHTML='<span class="parsetag hit">Loaded '+d.service+' · '+d.vessel+' from the Vessel Slot Cost table ('+(mkt?'Market':'Daily')+' basis) ✓</span>';
+  document.body.classList.remove('landing');
+  if(typeof showSrcBanner==='function') showSrcBanner(d.service+' · '+d.vessel+'  ('+(mkt?'Market':'Daily')+')');
+  if(typeof saveState==='function') saveState();
   window.scrollTo(0,0);
 }
 const toCalcBtn=document.getElementById('toCalcBtn');
@@ -1020,9 +1137,113 @@ if(pullBtn) pullBtn.onclick=()=>{
 };
 
 
+/* ===================== UX: PERSISTENCE, HASH ROUTING, FLASH, BANNER ===================== */
+const LSKEY='culvc_state_v1';
+const CALC_FIELDS=['cName','cCap','cDays','cLsfoT','cHsfoT','cMgoT','cLsfoP','cHsfoP','cMgoP','cHireRate','cPort','cMisc'];
+let restoring=false;
+
+function collectState(){
+  const calc={}; CALC_FIELDS.forEach(id=>{const e=cg(id); if(e) calc[id]=e.value;});
+  return {
+    page: document.body.classList.contains('landing')?'home':currentPage,
+    basis, scope: (typeof scopeSel!=='undefined'&&scopeSel)?scopeSel.value:'ALL',
+    vlsfo:+vlsfo.value, hfo:+hfo.value, mgo:+mgo.value,
+    hVessel: (typeof hVes!=='undefined'&&hVes)?hVes.value:'ALL',
+    hMode: (typeof hModeVal!=='undefined')?hModeVal:'browse',
+    selVessel: (typeof selectedVessel!=='undefined')?selectedVessel:null,
+    calc
+  };
+}
+function saveState(){ if(restoring) return; try{ localStorage.setItem(LSKEY, JSON.stringify(collectState())); }catch(e){} syncHash(); }
+
+function syncHash(){
+  if(restoring) return;
+  const s=collectState();
+  let hash='';
+  if(s.page==='home'){ hash=''; }
+  else if(s.page==='slot'){ hash='#slot'+(s.scope&&s.scope!=='ALL'?('/'+encodeURIComponent(s.scope)):''); }
+  else if(s.page==='bunker'){ hash='#bunker'+(s.selVessel?('/'+encodeURIComponent(s.selVessel)):''); }
+  else if(s.page==='calc'){ hash='#calc'+(s.calc.cName?('/'+encodeURIComponent(s.calc.cName)):''); }
+  else if(s.page==='sim'){ hash='#sim'; }
+  const target=hash||location.pathname+location.search;
+  try{ history.replaceState(null,'',target); }catch(e){ try{ location.hash = hash? hash.slice(1):''; }catch(_){} }
+}
+
+function applyState(s, fromHash){
+  if(!s) return;
+  restoring=true;
+  try{
+    if(s.basis && s.basis!==basis){ basis=s.basis; document.querySelectorAll('#basis button').forEach(b=>b.classList.toggle('on',b.dataset.b===basis)); }
+    if(s.vlsfo!=null){vlsfo.value=s.vlsfo;} if(s.hfo!=null){hfo.value=s.hfo;} if(s.mgo!=null){mgo.value=s.mgo;}
+    if(s.scope && scopeSel){ const opt=[...scopeSel.options].some(o=>o.value===s.scope); if(opt) scopeSel.value=s.scope; }
+    if(s.calc){ CALC_FIELDS.forEach(id=>{ if(s.calc[id]!=null && cg(id)) cg(id).value=s.calc[id]; }); }
+  }catch(e){}
+  restoring=false;
+  // re-render with restored values
+  try{ renderSlot(); }catch(e){}
+  try{ if(typeof recalcSlot==='function') recalcSlot(); }catch(e){}
+  // bunker page restore
+  try{
+    if(s.hMode && typeof setMode==='function'){ setMode(s.hMode); }
+    if(s.selVessel && typeof selectVessel==='function'){ selectVessel(s.selVessel); }
+    else if(s.hVessel && hVes){ hVes.value=s.hVessel; if(typeof renderResults==='function') renderResults(); }
+  }catch(e){}
+  // page
+  const pg=s.page||'home';
+  if(pg==='home'){ document.body.classList.add('landing'); }
+  else { document.body.classList.remove('landing'); showPage(pg); }
+  // calc banner if a name is loaded
+  if(s.calc && s.calc.cName){ showSrcBanner(s.calc.cName); }
+}
+
+function parseHash(){
+  const raw=location.hash.replace(/^#/,''); if(!raw) return null;
+  const [page,...rest]=raw.split('/'); const arg=rest.length?decodeURIComponent(rest.join('/')):null;
+  return {page, arg};
+}
+function applyHash(){
+  const hp=parseHash(); if(!hp) return false;
+  const base=loadSaved()||{};
+  base.page=hp.page;
+  if(hp.page==='slot' && hp.arg){ base.scope=hp.arg; }
+  if(hp.page==='bunker' && hp.arg){ base.selVessel=hp.arg; }
+  if(hp.page==='calc' && hp.arg){ base.calc=base.calc||{}; base.calc.cName=hp.arg; }
+  applyState(base, true);
+  return true;
+}
+
+function loadSaved(){ try{ return JSON.parse(localStorage.getItem(LSKEY)||'null'); }catch(e){ return null; } }
+
+/* recalc flash: briefly highlight a result element when its text changes */
+function flash(el){ if(!el) return; el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
+(function hookFlash(){
+  ['rSlot','rTotal'].forEach(id=>{ const el=cg(id); if(!el) return;
+    const mo=new MutationObserver(()=>flash(el)); mo.observe(el,{childList:true,characterData:true,subtree:true}); });
+})();
+
+/* calculator data-source banner */
+function showSrcBanner(label){ const b=cg('srcBanner'); if(!b) return; cg('srcBannerText').innerHTML='Showing <b>'+label.replace(/</g,'')+'</b> — values loaded from source. Edits are local to this view.'; b.classList.add('on'); }
+function hideSrcBanner(){ const b=cg('srcBanner'); if(b) b.classList.remove('on'); }
+(function(){ const c=cg('srcBannerClear'); if(c) c.onclick=()=>{ CALC_FIELDS.forEach(id=>{const e=cg(id); if(!e)return; if(id==='cName')e.value=''; else if(id==='cCap')e.value=1600; else if(id==='cDays')e.value=43; else if(id==='cLsfoP')e.value=700; else if(id==='cHsfoP')e.value=600; else if(id==='cMgoP')e.value=1100; else e.value=0;}); recalcSlot(); if(typeof xlSyncFromInputs==='function')xlSyncFromInputs(); hideSrcBanner(); saveState(); }; })();
+
+/* attach autosave to all relevant controls */
+(function attachSave(){
+  CALC_FIELDS.forEach(id=>{const e=cg(id); if(e) e.addEventListener('input',saveState);});
+  [vlsfo,hfo,mgo].forEach(s=>s&&s.addEventListener('input',saveState));
+  if(typeof scopeSel!=='undefined'&&scopeSel) scopeSel.addEventListener('change',saveState);
+  document.querySelectorAll('#basis button').forEach(b=>b.addEventListener('click',()=>setTimeout(saveState,0)));
+  window.addEventListener('hashchange',()=>{ if(!restoring) applyHash(); });
+})();
+
+/* ---- boot ---- */
 renderSlot();
 initHist();
-showPage('slot');
+// restore: hash takes priority, else saved state, else default landing
+if(!applyHash()){
+  const saved=loadSaved();
+  if(saved){ applyState(saved,false); }
+  else { showPage('slot'); }
+}
 
 </script>
 </body>
