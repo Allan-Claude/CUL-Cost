@@ -351,21 +351,19 @@ body.landing .main{display:none;}
     <!-- ===== PAGE 4 : SLOT COST CALCULATOR ===== -->
     <div class="page" id="page-calc"><div class="wrap">
 
-      <div class="panel">
-        <h2>1 · Bring in voyage results <span class="note">· pull straight from the simulator, paste its text, or type below</span></h2>
-        <textarea class="pastebox" id="calcPaste" placeholder="Paste the simulator's result text here — e.g. the Estimated Fuel / Voyage Cost Summary block. The calculator will pull out Grand Total LSFO, Grand Total MGO, run days and distance automatically."></textarea>
-        <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <button class="handoff" id="calcPull">↺ Pull latest from simulator</button>
-          <button class="btn" id="calcParse">Parse pasted text</button>
-          <button class="btn" id="calcClear">Clear</button>
-          <span id="calcParseTags"></span>
-        </div>
-        <div class="calcnote">The embedded simulator runs on another site, so values can't be read automatically — paste its result text (or the exported summary) here, or just fill the fields in step 2. Recognised labels: “Grand Total LSFO”, “Grand Total MGO”, “Est. Sea LSFO/MGO”, “Port Stay LSFO/MGO”, “Total Run Days”, “Total Distance”.</div>
-      </div>
-
       <div class="calcgrid">
         <div class="panel">
-          <h2>2 · Voyage inputs</h2>
+          <h2>1 · Voyage inputs <span class="note">· pull from the simulator or enter manually</span></h2>
+          <div class="xlbtns" style="margin-top:0;margin-bottom:10px">
+            <button class="handoff" id="calcPull">↺ Pull latest from simulator</button>
+            <button class="btn" id="calcPasteToggle">Paste simulator text</button>
+            <span id="calcParseTags"></span>
+          </div>
+          <div id="calcPasteWrap" style="display:none;margin-bottom:12px">
+            <textarea class="pastebox" id="calcPaste" placeholder="Paste the simulator's result text — Grand Total LSFO / MGO, Total Run Days, Total Distance — then Parse."></textarea>
+            <div style="margin-top:6px;display:flex;gap:8px"><button class="btn" id="calcParse">Parse pasted text</button><button class="btn" id="calcClear">Clear</button></div>
+          </div>
+
           <div class="subhead">Vessel / voyage</div>
           <div class="frow"><label>Vessel / voyage label</label><input type="text" id="cName" style="text-align:left" placeholder="optional"></div>
           <div class="frow"><label>Effective capacity <span class="u">TEU/slots</span></label><input type="number" id="cCap" value="1600" min="1"></div>
@@ -390,7 +388,7 @@ body.landing .main{display:none;}
         </div>
 
         <div class="panel">
-          <h2>3 · Slot cost result</h2>
+          <h2>2 · Slot cost result</h2>
           <div class="bigres">
             <div class="b accent"><div class="k">Slot cost</div><div class="v" id="rSlot">$0</div><div class="d">per slot / TEU</div></div>
             <div class="b"><div class="k">Total operating cost</div><div class="v" id="rTotal">$0</div><div class="d">per voyage</div></div>
@@ -408,37 +406,35 @@ body.landing .main{display:none;}
           <div class="frow"><label><b>= Slot cost</b></label><span class="ro" id="rSlot2" style="color:var(--accent)">$0</span></div>
 
           <div class="subhead">Composition</div>
-          <div class="chartbox" style="height:200px"><canvas id="calcChart"></canvas></div>
-          <div class="calcnote">Slot cost = (Charter hire + Bunker + Port charges + Misc) ÷ effective capacity. Bunker = Σ (fuel MT × price). Same formula as the Vessel Slot Cost page, so results are directly comparable.</div>
+          <div class="chartbox" style="height:190px"><canvas id="calcChart"></canvas></div>
+          <div class="calcnote">Slot cost = (Charter hire + Bunker + Port charges + Misc) ÷ effective capacity. Bunker = Σ (fuel MT × price). Same formula as the Vessel Slot Cost page.</div>
+        </div>
+      </div>
+
+      <div class="calcgrid">
+        <div class="panel">
+          <h2>3 · Bunker price sensitivity <span class="note" id="sBunkNote"></span></h2>
+          <div class="chartbox" style="height:300px"><canvas id="sBunkChart"></canvas></div>
+          <div class="calcnote">Slot cost as all three fuel prices scale together from −50% to +50% of the current settings. Dashed marker = current prices.</div>
+        </div>
+        <div class="panel">
+          <h2>3 · Charter-hire sensitivity <span class="note" id="sHireNote"></span></h2>
+          <div class="chartbox" style="height:300px"><canvas id="sHireChart"></canvas></div>
+          <div class="calcnote">Slot cost as the charter-hire daily rate scales from −50% to +50% of the current rate. Dashed marker = current rate.</div>
         </div>
       </div>
 
       <div class="panel xlpanel">
-        <h2>4 · Excel-ready summary <span class="note">· two scenarios side by side — edit any white cell, then copy to Excel</span></h2>
+        <h2>4 · Excel-ready summary <span class="note">· mirrors your Voyage inputs — add a column to compare scenarios</span></h2>
         <div class="xlbtns">
-          <button class="btn" id="xlFromCalc">↑ Fill base column from calculator above</button>
+          <button class="btn" id="xlSync">↑ Sync from Voyage inputs</button>
+          <button class="btn" id="xlAddCol">＋ Add comparison column</button>
+          <button class="btn" id="xlDelCol">－ Remove last column</button>
           <button class="btn" id="xlCopy">📋 Copy table for Excel</button>
           <span class="copied" id="xlCopied" style="display:none">Copied — paste into Excel ✓</span>
         </div>
-        <table class="xltable" id="xlTable">
-          <tr><td class="hdr">Service Name</td><td class="hdr"><input id="x_name1" value="CGS"></td><td class="hdr"><input id="x_name2" value="CGS (Monsoon)"></td></tr>
-          <tr><td class="hdr">Rotation</td><td class="hdr" colspan="2"><input id="x_rot" value="CNSHA-CNNAS-AEKLF-CNSHA"></td></tr>
-          <tr><td class="lab">Vessel Name</td><td class="valb" colspan="2"><input id="x_vessel" value="DONG FANG MING HAI"></td></tr>
-          <tr><td class="lab">Open Date</td><td class="valb" colspan="2"><input id="x_open" value="Start July'26"></td></tr>
-          <tr><td class="lab">Location</td><td class="valb" colspan="2"><input id="x_loc" value="Yangtze River Estuary"></td></tr>
-          <tr><td class="lab">Chartering period</td><td class="valb" colspan="2"><input id="x_period" value="1 Year"></td></tr>
-          <tr><td class="lab">Service Speed (knot)</td><td class="valb" colspan="2"><input id="x_speed" value="12"></td></tr>
-          <tr><td class="lab">Declared Capacity</td><td class="val"><input id="x_cap1" value="1380"></td><td class="val"><input id="x_cap2" value="1311"></td></tr>
-          <tr><td class="sub">Bunker Cost</td><td class="subval"><input id="x_bunker1" value="377200"></td><td class="subval"><input id="x_bunker2" value="390500"></td></tr>
-          <tr><td class="lab">Total Bunker Consumption</td><td class="val"><input id="x_cons1" value="532"></td><td class="val"><input id="x_cons2" value="555"></td></tr>
-          <tr><td class="sub">Vessel Charter Cost</td><td class="subval"><input id="x_charter1" value="1225000"></td><td class="subval"><input id="x_charter2" value="1300000"></td></tr>
-          <tr><td class="lab">R/T Days</td><td class="val"><input id="x_days1" value="49"></td><td class="val"><input id="x_days2" value="52"></td></tr>
-          <tr><td class="lab">Chartering Rate</td><td class="val"><input id="x_rate1" value="25000"></td><td class="val"><input id="x_rate2" value="25000"></td></tr>
-          <tr><td class="sub">Port Charge &amp; Misc</td><td class="subval"><input id="x_port1" value="96051"></td><td class="subval"><input id="x_port2" value="96051"></td></tr>
-          <tr><td class="sub">R/T Total Cost</td><td class="subval" id="x_total1">1,698,251</td><td class="subval" id="x_total2">1,786,551</td></tr>
-          <tr><td class="slotlab">Slot Cost (Per FEU)</td><td class="slotval" id="x_slot1">2,461</td><td class="slotval" id="x_slot2">2,725</td></tr>
-        </table>
-        <div class="calcnote">R/T Total Cost = Bunker + Vessel Charter + Port&amp;Misc. Slot Cost (Per FEU) = R/T Total ÷ Declared Capacity × 2 (FEU = 2 TEU), rounded. Grey/blue total &amp; yellow slot rows recompute automatically. “Copy table for Excel” puts a tab-separated grid on your clipboard — paste straight into a sheet.</div>
+        <table class="xltable" id="xlTable"><tbody id="xlBody"></tbody></table>
+        <div class="calcnote">R/T Total Cost = Bunker + Vessel Charter + Port&amp;Misc. Slot Cost (Per FEU) = R/T Total ÷ Declared Capacity × 2 (FEU = 2 TEU), rounded. The first column mirrors your Voyage inputs above; “Sync from Voyage inputs” refreshes it. Add columns to compare alternative scenarios (e.g. monsoon). White cells are editable; “Copy table for Excel” puts a tab-separated grid on your clipboard.</div>
       </div>
 
     </div></div>
@@ -720,7 +716,7 @@ function initHist(){ buildVesselCards(); setMode('browse'); }
 
 
 /* ===================== PAGE 4 : SLOT COST CALCULATOR ===================== */
-let calcChart=null;
+let calcChart=null, sBunkChart=null, sHireChart=null;
 const CALC_DEF={lsfo:700,hsfo:600,mgo:1100};
 const cg=id=>document.getElementById(id);
 const cnum=id=>{const v=parseFloat(cg(id).value);return isNaN(v)?0:v;};
@@ -743,6 +739,7 @@ function recalcSlot(){
   cg('rPort').textContent=usd(port); cg('rMisc').textContent=usd(misc);
   cg('rCap').textContent=fmt0(cap);
   drawCalcChart({Hire:hire,Bunker:bsub,Port:port,Misc:misc});
+  drawBunkerSens(); drawHireSens();
 }
 function drawCalcChart(parts){
   const labels=Object.keys(parts), data=Object.values(parts).map(v=>+v.toFixed(0));
@@ -752,6 +749,42 @@ function drawCalcChart(parts){
       tooltip:{callbacks:{label:c=>c.label+': '+usd(c.parsed)+' ('+(c.parsed/(data.reduce((a,b)=>a+b,0)||1)*100).toFixed(1)+'%)'}}}}};
   if(calcChart)calcChart.destroy();
   calcChart=new Chart(cg('calcChart'),cfg);
+}
+// --- helper: slot cost for given bunker-price multiplier and hire-rate multiplier ---
+function slotAt(bunkMult, hireMult){
+  const cap=cnum('cCap')||0, days=cnum('cDays');
+  const lt=cnum('cLsfoT'),ht=cnum('cHsfoT'),mt=cnum('cMgoT');
+  const lp=cnum('cLsfoP')*bunkMult,hp=cnum('cHsfoP')*bunkMult,mp=cnum('cMgoP')*bunkMult;
+  const bsub=lt*lp+ht*hp+mt*mp;
+  const hire=cnum('cHireRate')*hireMult*days;
+  const total=hire+bsub+cnum('cPort')+cnum('cMisc');
+  return cap>0? total/cap : 0;
+}
+const SENS_PCTS=[-50,-40,-30,-20,-10,0,10,20,30,40,50];
+function sensCfg(dataArr, lineColor, yTitle){
+  return {type:'line',
+    data:{labels:SENS_PCTS.map(p=>(p>=0?'+':'')+p+'%'),
+      datasets:[{data:dataArr,borderColor:lineColor,backgroundColor:lineColor,borderWidth:2,
+        pointRadius:SENS_PCTS.map(p=>p===0?5:0),pointHoverRadius:5,
+        pointBackgroundColor:SENS_PCTS.map(p=>p===0?'#1c2b3a':lineColor),tension:.25}]},
+    options:{maintainAspectRatio:false,responsive:true,
+      plugins:{legend:{display:false},tooltip:{callbacks:{title:t=>'Change '+t[0].label,label:c=>'Slot '+usd(c.parsed.y)}}},
+      scales:{x:{ticks:{color:'#647387'},grid:{color:'#e7edf4'},title:{display:true,text:'change vs current',color:'#647387'}},
+              y:{ticks:{color:'#647387',callback:v=>'$'+fmt0(v)},grid:{color:'#e7edf4'},title:{display:true,text:yTitle,color:'#647387'}}}}};
+}
+function drawBunkerSens(){
+  const data=SENS_PCTS.map(p=>+slotAt(1+p/100,1).toFixed(1));
+  const base=slotAt(1,1), lo=data[0], hi=data[data.length-1];
+  cg('sBunkNote').textContent='· '+usd(lo)+' → '+usd(hi)+' per slot';
+  const cfg=sensCfg(data,'#d98a00','Slot cost (USD/slot)');
+  if(sBunkChart)sBunkChart.destroy(); sBunkChart=new Chart(cg('sBunkChart'),cfg);
+}
+function drawHireSens(){
+  const data=SENS_PCTS.map(p=>+slotAt(1,1+p/100).toFixed(1));
+  const lo=data[0], hi=data[data.length-1];
+  cg('sHireNote').textContent='· '+usd(lo)+' → '+usd(hi)+' per slot';
+  const cfg=sensCfg(data,'#1d6fe0','Slot cost (USD/slot)');
+  if(sHireChart)sHireChart.destroy(); sHireChart=new Chart(cg('sHireChart'),cfg);
 }
 // paste parser
 function parseSimText(){
@@ -777,63 +810,106 @@ function parseSimText(){
 cg('cResetPrices').onclick=()=>{cg('cLsfoP').value=CALC_DEF.lsfo;cg('cHsfoP').value=CALC_DEF.hsfo;cg('cMgoP').value=CALC_DEF.mgo;recalcSlot();};
 cg('calcParse').onclick=parseSimText;
 cg('calcClear').onclick=()=>{cg('calcPaste').value='';cg('calcParseTags').innerHTML='';};
-// ----- Excel-ready summary table -----
-const xlNum=id=>{const v=parseFloat(String(cg(id).value).replace(/,/g,''));return isNaN(v)?0:v;};
+cg('calcPasteToggle').onclick=()=>{const w=cg('calcPasteWrap');w.style.display=w.style.display==='none'?'block':'none';};
+// ----- Excel-ready summary table (dynamic columns) -----
 const grp=n=>Math.round(n).toLocaleString('en-US');
-function xlRecalc(){
-  [1,2].forEach(c=>{
-    const total=xlNum('x_bunker'+c)+xlNum('x_charter'+c)+xlNum('x_port'+c);
-    const cap=xlNum('x_cap'+c);
-    const slot=cap>0? total/cap*2 : 0;
-    cg('x_total'+c).textContent=grp(total);
-    cg('x_slot'+c).textContent=grp(slot);
-  });
+// each column is an object of editable field values
+let xlCols=[];
+function colFromInputs(){
+  return {
+    name: cg('cName').value || 'Scenario',
+    rot: (typeof xlShared!=='undefined'? xlShared.rot : ''),
+    vessel: '',
+    speed: '',
+    cap: Math.round(cnum('cCap')),
+    bunker: Math.round(cnum('cLsfoT')*cnum('cLsfoP')+cnum('cHsfoT')*cnum('cHsfoP')+cnum('cMgoT')*cnum('cMgoP')),
+    cons: Math.round(cnum('cLsfoT')+cnum('cHsfoT')+cnum('cMgoT')),
+    charter: Math.round(cnum('cHireRate')*cnum('cDays')),
+    days: cnum('cDays'),
+    rate: Math.round(cnum('cHireRate')),
+    port: Math.round(cnum('cPort')+cnum('cMisc'))
+  };
 }
-['x_bunker1','x_charter1','x_port1','x_cap1','x_bunker2','x_charter2','x_port2','x_cap2'].forEach(id=>cg(id).addEventListener('input',xlRecalc));
-// fill base (column 1) from the calculator inputs above
-cg('xlFromCalc').onclick=()=>{
-  const lt=cnum('cLsfoT'),ht=cnum('cHsfoT'),mt=cnum('cMgoT');
-  const lp=cnum('cLsfoP'),hp=cnum('cHsfoP'),mp=cnum('cMgoP');
-  const bunker=lt*lp+ht*hp+mt*mp;
-  const days=cnum('cDays'), rate=cnum('cHireRate');
-  cg('x_bunker1').value=Math.round(bunker);
-  cg('x_cons1').value=Math.round(lt+ht+mt);
-  cg('x_charter1').value=Math.round(rate*days);
-  cg('x_rate1').value=Math.round(rate);
-  cg('x_days1').value=days;
-  cg('x_port1').value=Math.round(cnum('cPort')+cnum('cMisc'));
-  cg('x_cap1').value=Math.round(cnum('cCap'));
-  if(cg('cName').value) cg('x_name1').value=cg('cName').value;
-  xlRecalc();
-};
-// copy as TSV for Excel
+// shared (single) fields kept outside columns: rotation, vessel, speed
+let xlShared={rot:'', vessel:'', speed:''};
+function xlTotals(col){
+  const total=(+col.bunker)+(+col.charter)+(+col.port);
+  const cap=+col.cap;
+  const slot=cap>0? total/cap*2 : 0;
+  return {total, slot};
+}
+// row definitions: [label, key, type]  type: 'shared' | 'num' | 'calc-total' | 'calc-slot'
+const XL_ROWS=[
+  ['Service Name','name','hdr'],
+  ['Rotation','rot','shared'],
+  ['Vessel Name','vessel','shared'],
+  ['Service Speed (knot)','speed','shared'],
+  ['Declared Capacity','cap','num'],
+  ['Bunker Cost','bunker','sub'],
+  ['Total Bunker Consumption','cons','num'],
+  ['Vessel Charter Cost','charter','sub'],
+  ['R/T Days','days','num'],
+  ['Chartering Rate','rate','num'],
+  ['Port Charge & Misc','port','sub'],
+  ['R/T Total Cost','total','calctot'],
+  ['Slot Cost (Per FEU)','slot','calcslot']
+];
+function renderXl(){
+  const body=cg('xlBody');
+  const n=xlCols.length;
+  let html='';
+  XL_ROWS.forEach(([label,key,type])=>{
+    if(type==='hdr'){
+      html+='<tr><td class="hdr">'+label+'</td>'+xlCols.map((c,ci)=>'<td class="hdr"><input data-c="'+ci+'" data-k="name" value="'+String(c.name).replace(/"/g,'&quot;')+'"></td>').join('')+'</tr>';
+    } else if(type==='shared'){
+      html+='<tr><td class="lab">'+label+'</td><td class="valb" colspan="'+n+'"><input data-shared="'+key+'" value="'+String(xlShared[key]||'').replace(/"/g,'&quot;')+'"></td></tr>';
+    } else if(type==='num'){
+      html+='<tr><td class="lab">'+label+'</td>'+xlCols.map((c,ci)=>'<td class="val"><input data-c="'+ci+'" data-k="'+key+'" value="'+c[key]+'"></td>').join('')+'</tr>';
+    } else if(type==='sub'){
+      html+='<tr><td class="sub">'+label+'</td>'+xlCols.map((c,ci)=>'<td class="subval"><input data-c="'+ci+'" data-k="'+key+'" value="'+c[key]+'"></td>').join('')+'</tr>';
+    } else if(type==='calctot'){
+      html+='<tr><td class="sub">'+label+'</td>'+xlCols.map(c=>'<td class="subval">'+grp(xlTotals(c).total)+'</td>').join('')+'</tr>';
+    } else if(type==='calcslot'){
+      html+='<tr><td class="slotlab">'+label+'</td>'+xlCols.map(c=>'<td class="slotval">'+grp(xlTotals(c).slot)+'</td>').join('')+'</tr>';
+    }
+  });
+  body.innerHTML=html;
+  // wire inputs
+  body.querySelectorAll('input[data-c]').forEach(inp=>inp.oninput=()=>{
+    const ci=+inp.dataset.c, k=inp.dataset.k;
+    let v=inp.value; if(k!=='name') { const num=parseFloat(String(v).replace(/,/g,'')); v=isNaN(num)?0:num; }
+    xlCols[ci][k]=v; renderXl();
+  });
+  body.querySelectorAll('input[data-shared]').forEach(inp=>inp.oninput=()=>{ xlShared[inp.dataset.shared]=inp.value; });
+}
+function xlSyncFromInputs(){
+  const c=colFromInputs();
+  if(xlCols.length===0) xlCols.push(c); else { Object.assign(xlCols[0], c); }
+  // rotation: derive from the loaded service if available via cName
+  renderXl();
+}
+cg('xlSync').onclick=xlSyncFromInputs;
+cg('xlAddCol').onclick=()=>{ const base=xlCols[xlCols.length-1]||colFromInputs(); const copy=Object.assign({},base); copy.name=(base.name||'Scenario')+' (alt)'; xlCols.push(copy); renderXl(); };
+cg('xlDelCol').onclick=()=>{ if(xlCols.length>1){ xlCols.pop(); renderXl(); } };
 cg('xlCopy').onclick=()=>{
-  const val=id=>{const e=cg(id);return e.tagName==='INPUT'?e.value:e.textContent;};
-  const rows=[
-    ['Service Name', val('x_name1'), val('x_name2')],
-    ['Rotation', val('x_rot'), val('x_rot')],
-    ['Vessel Name', val('x_vessel'), val('x_vessel')],
-    ['Open Date', val('x_open'), val('x_open')],
-    ['Location', val('x_loc'), val('x_loc')],
-    ['Chartering period', val('x_period'), val('x_period')],
-    ['Service Speed (knot)', val('x_speed'), val('x_speed')],
-    ['Declared Capacity', val('x_cap1'), val('x_cap2')],
-    ['Bunker Cost', val('x_bunker1'), val('x_bunker2')],
-    ['Total Bunker Consumption', val('x_cons1'), val('x_cons2')],
-    ['Vessel Charter Cost', val('x_charter1'), val('x_charter2')],
-    ['R/T Days', val('x_days1'), val('x_days2')],
-    ['Chartering Rate', val('x_rate1'), val('x_rate2')],
-    ['Port Charge & Misc', val('x_port1'), val('x_port2')],
-    ['R/T Total Cost', val('x_total1'), val('x_total2')],
-    ['Slot Cost (Per FEU)', val('x_slot1'), val('x_slot2')]
-  ];
+  const rows=[];
+  XL_ROWS.forEach(([label,key,type])=>{
+    if(type==='shared'){ rows.push([label, ...xlCols.map(()=>xlShared[key]||'')]); }
+    else if(type==='calctot'){ rows.push([label, ...xlCols.map(c=>grp(xlTotals(c).total))]); }
+    else if(type==='calcslot'){ rows.push([label, ...xlCols.map(c=>grp(xlTotals(c).slot))]); }
+    else { rows.push([label, ...xlCols.map(c=>c[key])]); }
+  });
   const tsv=rows.map(r=>r.map(c=>String(c).replace(/,/g,'')).join('\t')).join('\n');
   const done=()=>{const e=cg('xlCopied');e.style.display='inline';setTimeout(()=>e.style.display='none',2200);};
   if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(tsv).then(done).catch(()=>fallbackCopy(tsv,done));}
   else fallbackCopy(tsv,done);
 };
 function fallbackCopy(text,cb){const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');}catch(e){}document.body.removeChild(ta);cb&&cb();}
-xlRecalc();
+// keep a compatibility shim for older callers
+function xlRecalc(){ renderXl(); }
+function xlFromCalcCompat(){ xlSyncFromInputs(); }
+// init: one column mirroring the inputs
+xlSyncFromInputs();
 
 // handoff button on simulator page -> go to calculator
 // ----- Send a vessel from the Slot Cost table into the Slot Cost Calculator -----
@@ -852,12 +928,13 @@ function sendVesselToCalc(svc, ves){
   cg('cPort').value = d.port;
   cg('cMisc').value = d.misc;
   recalcSlot();
-  // also fill the base column of the Excel-ready summary table
-  if(cg('xlFromCalc')) cg('xlFromCalc').click();
-  if(cg('x_name1')) cg('x_name1').value=d.service;
-  if(cg('x_rot')){ const r=ROT[d.service]; if(r&&r.ports&&r.ports.length){ cg('x_rot').value=r.ports.map(p=>p[0]).join('-'); } }
-  if(cg('x_vessel')) cg('x_vessel').value=d.vessel;
-  if(typeof xlRecalc==='function') xlRecalc();
+  // also refresh the Excel-ready summary base column from these inputs
+  if(typeof xlShared!=='undefined'){
+    const r=ROT[d.service];
+    xlShared.rot = (r&&r.ports&&r.ports.length)? r.ports.map(p=>p[0]).join('-') : '';
+    xlShared.vessel = d.vessel;
+  }
+  if(typeof xlSyncFromInputs==='function'){ xlSyncFromInputs(); if(xlCols[0]) xlCols[0].name=d.service; renderXl(); }
   showPage('calc');
   cg('calcParseTags').innerHTML='<span class="parsetag hit">Loaded '+d.service+' · '+d.vessel+' from the Vessel Slot Cost table ('+(mkt?'Market':'Daily')+' basis) ✓</span>';
   window.scrollTo(0,0);
