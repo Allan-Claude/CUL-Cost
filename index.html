@@ -274,6 +274,13 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 .cucard .cucontrib .pos{color:var(--good);font-weight:700;} .cucard .cucontrib .neg{color:var(--bad);font-weight:700;}
 .cuwkrow{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 2px;}
 .cuwk{font-size:10.5px;color:var(--mut);background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-variant-numeric:tabular-nums;}
+.regioncards{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;}
+.rcard{flex:1 1 150px;min-width:140px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:11px 14px;cursor:pointer;transition:border-color .12s,box-shadow .12s,background .12s;border-left:4px solid var(--line);}
+.rcard:hover{border-color:var(--accent);box-shadow:0 2px 8px rgba(29,111,224,.1);}
+.rcard.on{border-color:var(--accent);background:#f5f9ff;box-shadow:0 0 0 2px rgba(29,111,224,.16);}
+.rcard .rn{font-weight:700;font-size:13.5px;line-height:1.2;}
+.rcard .rm{font-size:11px;color:var(--mut);margin-top:4px;font-variant-numeric:tabular-nums;}
+@media(max-width:760px){.rcard{flex:1 1 45%;}}
 </style>
 </head>
 <body class="landing">
@@ -367,8 +374,9 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 
     <!-- ===== PAGE 1 ===== -->
     <div class="page on" id="page-slot"><div class="wrap">
+      <div class="regioncards" id="regionCards"></div>
       <div class="controls">
-        <div class="ctl"><label>View</label><select id="scope"></select></div>
+        <div class="ctl"><label>Service (optional drill-down)</label><select id="scope"></select></div>
         <div class="ctl"><label>Cost basis</label><div class="seg" id="basis"><button data-b="market" class="on">Market (Weekly PL)</button><button data-b="daily">Daily (Adjusted PL)</button></div></div>
         <div class="ctl"><label>VLSFO price <span class="val" id="vlsfoV"></span></label><input type="range" id="vlsfo" min="200" max="1400" step="10" value="700"></div>
         <div class="ctl"><label>HFO price <span class="val" id="hfoV"></span></label><input type="range" id="hfo" min="150" max="1300" step="10" value="600"></div>
@@ -621,7 +629,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
         </div>
         <div class="ctl"><label>Search port pair</label><input type="text" id="cuSearch" placeholder="e.g. SAJED, CNSHA…" style="min-width:220px"></div>
         <div class="ctl"><label>Sort by</label>
-          <select id="cuSort"><option value="cost">Highest cost / unit</option><option value="costlow">Lowest cost / unit</option><option value="contrib">Highest contribution / unit</option><option value="contriblow">Lowest contribution / unit</option><option value="units">Most units</option><option value="week">Most recent week</option><option value="pair">Port pair A–Z</option></select>
+          <select id="cuSort"><option value="cost">Highest cost / unit</option><option value="costlow">Lowest cost / unit</option><option value="contrib">Highest contribution / unit</option><option value="contriblow">Lowest contribution / unit</option><option value="units" selected>Most units</option><option value="week">Most recent week</option><option value="pair">Port pair A–Z</option></select>
         </div>
       </div>
       <div class="hint">Search a port pair to understand its <b>cost per unit</b> and what drives it. Each pair uses its <b>own most recent week</b> of data (20′ and 40′ may each be from a different week, shown on the card). Cost is broken into its seven components, worked back from revenue − contribution. Mixed 20′/40′ B/Ls are excluded. Source: Contribution_by_Booking.xlsx.</div>
@@ -719,16 +727,35 @@ const REGCOL={'Taiwan Straits':'#1d6fe0','South East Asia':'#1aa06d','Indian Sub
 function hexA(hex,a){const h=hex.replace('#','');return `rgba(${parseInt(h.slice(0,2),16)},${parseInt(h.slice(2,4),16)},${parseInt(h.slice(4,6),16)},${a})`;}
 
 const scopeSel=document.getElementById('scope');
-(function(){
-  const all=document.createElement('option');all.value='ALL';all.textContent='All services (every region)';scopeSel.appendChild(all);
-  regionsPresent().forEach(r=>{
-    const og=document.createElement('optgroup');og.label=r;
-    const ra=document.createElement('option');ra.value='REGION::'+r;ra.textContent='▸ All '+r;og.appendChild(ra);
-    servicesInRegion(r).forEach(s=>{const o=document.createElement('option');o.value='SVC::'+s;o.textContent='   '+s;og.appendChild(o);});
-    scopeSel.appendChild(og);
+let slotRegion='ALL';  // 'ALL' or a region name
+// Build region filter cards
+(function buildRegionCards(){
+  const wrap=document.getElementById('regionCards');
+  const mk=(key,label,count,color)=>`<div class="rcard${key===slotRegion?' on':''}" data-region="${key.replace(/"/g,'&quot;')}" tabindex="0" role="button" style="border-left-color:${color}"><div class="rn">${label}</div><div class="rm">${count} vessel(s)</div></div>`;
+  let html=mk('ALL','All regions',DATA.length,'#647387');
+  regionsPresent().forEach(r=>{ html+=mk(r,r,DATA.filter(d=>d.region===r).length, REGCOL[r]||'#647387'); });
+  wrap.innerHTML=html;
+  wrap.querySelectorAll('[data-region]').forEach(el=>{
+    const go=()=>{ slotRegion=el.dataset.region; buildServiceOptions(); renderSlot(); saveState&&saveState();
+      wrap.querySelectorAll('.rcard').forEach(c=>c.classList.toggle('on',c.dataset.region===slotRegion)); };
+    el.onclick=go; el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}};
   });
 })();
-function selection(){const v=scopeSel.value;if(v==='ALL')return{type:'all',label:'All services'};if(v.startsWith('REGION::'))return{type:'region',region:v.slice(8),label:v.slice(8)};return{type:'service',service:v.slice(5),label:v.slice(5)};}
+// Service drill-down dropdown reflects the chosen region
+function buildServiceOptions(){
+  scopeSel.innerHTML='';
+  const allOpt=document.createElement('option');
+  allOpt.value='__ALLSVC__'; allOpt.textContent = slotRegion==='ALL'?'All services in all regions':('All '+slotRegion); scopeSel.appendChild(allOpt);
+  const regs = slotRegion==='ALL'? regionsPresent() : [slotRegion];
+  regs.forEach(r=> servicesInRegion(r).forEach(s=>{const o=document.createElement('option');o.value='SVC::'+s;o.textContent=s+'  ['+r+']';scopeSel.appendChild(o);}));
+}
+buildServiceOptions();
+function selection(){
+  const v=scopeSel.value;
+  if(v && v.startsWith('SVC::')) return {type:'service',service:v.slice(5),label:v.slice(5)};
+  if(slotRegion!=='ALL') return {type:'region',region:slotRegion,label:slotRegion};
+  return {type:'all',label:'All services'};
+}
 function rowsFor(sel){if(sel.type==='all')return DATA.slice();if(sel.type==='region')return DATA.filter(d=>d.region===sel.region);return DATA.filter(d=>d.service===sel.service);}
 
 function renderSlot(){
@@ -786,7 +813,7 @@ function drawRotation(sel){
       html+='<div class="port" style="min-width:150px;text-align:left;cursor:pointer" data-svc="'+s+'"><div class="pc">'+s+'</div><div class="pt">'+days+' · '+calls+'</div>'+(partner?'<div class="pe" style="color:var(--mut)">'+partner+'</div>':'')+'</div>';});
     html+='</div></div>';});
   rotBody.innerHTML=html+'<div class="feeder">Click a service card to load its full port rotation.</div>';
-  rotBody.querySelectorAll('[data-svc]').forEach(el=>el.onclick=()=>{scopeSel.value='SVC::'+el.dataset.svc;renderSlot();});
+  rotBody.querySelectorAll('[data-svc]').forEach(el=>el.onclick=()=>{const sv=el.dataset.svc; slotRegion=regOf(sv); buildServiceOptions(); document.getElementById('regionCards').querySelectorAll('.rcard').forEach(c=>c.classList.toggle('on',c.dataset.region===slotRegion)); scopeSel.value='SVC::'+sv; renderSlot(); saveState&&saveState();});
 }
 function drawSlotTable(rs,sel){
   const grp=sel.type!=='service';const tb=document.querySelector('#tbl tbody');let html='';
@@ -1325,7 +1352,7 @@ function renderContrib(){
 }
 
 /* ===================== PAGE 6 : COST PER UNIT ===================== */
-let cuPairDef='polpod', cuBasis='inc', cuSize='all', cuSortV='cost', cuInit=false;
+let cuPairDef='polpod', cuBasis='inc', cuSize='all', cuSortV='units', cuInit=false;
 const CU_COLORS={agent:'#1d6fe0',ldterm:'#1aa06d',ldhaul:'#37c98b',slot:'#8158d6',mtterm:'#d98a00',mthaul:'#f2b134',fixed:'#d6453c'};
 // Build, per port-pair-definition, the LATEST week's cell for each (pair,size).
 const CU_LATEST={};
@@ -1413,7 +1440,7 @@ function collectState(){
   const calc={}; CALC_FIELDS.forEach(id=>{const e=cg(id); if(e) calc[id]=e.value;});
   return {
     page: document.body.classList.contains('landing')?'home':currentPage,
-    basis, scope: (typeof scopeSel!=='undefined'&&scopeSel)?scopeSel.value:'ALL',
+    basis, slotRegion:(typeof slotRegion!=='undefined')?slotRegion:'ALL', scope: (typeof scopeSel!=='undefined'&&scopeSel)?scopeSel.value:'__ALLSVC__',
     vlsfo:+vlsfo.value, hfo:+hfo.value, mgo:+mgo.value,
     hVessel: (typeof hVes!=='undefined'&&hVes)?hVes.value:'ALL',
     hMode: (typeof hModeVal!=='undefined')?hModeVal:'browse',
@@ -1430,7 +1457,7 @@ function syncHash(){
   const s=collectState();
   let hash='';
   if(s.page==='home'){ hash=''; }
-  else if(s.page==='slot'){ hash='#slot'+(s.scope&&s.scope!=='ALL'?('/'+encodeURIComponent(s.scope)):''); }
+  else if(s.page==='slot'){ const seg=(s.scope&&s.scope.startsWith('SVC::'))?s.scope:(s.slotRegion&&s.slotRegion!=='ALL'?('REGION::'+s.slotRegion):''); hash='#slot'+(seg?('/'+encodeURIComponent(seg)):''); }
   else if(s.page==='bunker'){ hash='#bunker'+(s.selVessel?('/'+encodeURIComponent(s.selVessel)):''); }
   else if(s.page==='calc'){ hash='#calc'+(s.calc.cName?('/'+encodeURIComponent(s.calc.cName)):''); }
   else if(s.page==='sim'){ hash='#sim'; }
@@ -1446,6 +1473,7 @@ function applyState(s, fromHash){
   try{
     if(s.basis && s.basis!==basis){ basis=s.basis; document.querySelectorAll('#basis button').forEach(b=>b.classList.toggle('on',b.dataset.b===basis)); }
     if(s.vlsfo!=null){vlsfo.value=s.vlsfo;} if(s.hfo!=null){hfo.value=s.hfo;} if(s.mgo!=null){mgo.value=s.mgo;}
+    if(typeof slotRegion!=='undefined'){ slotRegion=s.slotRegion||'ALL'; if(typeof buildServiceOptions==='function'){buildServiceOptions();} const rc=document.getElementById('regionCards'); if(rc) rc.querySelectorAll('.rcard').forEach(c=>c.classList.toggle('on',c.dataset.region===slotRegion)); }
     if(s.scope && scopeSel){ const opt=[...scopeSel.options].some(o=>o.value===s.scope); if(opt) scopeSel.value=s.scope; }
     if(s.calc){ CALC_FIELDS.forEach(id=>{ if(s.calc[id]!=null && cg(id)) cg(id).value=s.calc[id]; }); }
     if(typeof cwInitOnce==='function'){ cwInitOnce(); if(s.cwPairDef){cwPairDef=s.cwPairDef;document.querySelectorAll('#cwPair button').forEach(b=>b.classList.toggle('on',b.dataset.p===cwPairDef));} if(s.cwBasis){cwBasis=s.cwBasis;document.querySelectorAll('#cwBasis button').forEach(b=>b.classList.toggle('on',b.dataset.b===cwBasis));} if(s.cwWeek){cwWeekVal=s.cwWeek; const ws=document.getElementById('cwWeek'); if(ws&&[...ws.options].some(o=>o.value===s.cwWeek))ws.value=s.cwWeek;} }
@@ -1480,7 +1508,7 @@ function applyHash(){
   const hp=parseHash(); if(!hp) return false;
   const base=loadSaved()||{};
   base.page=hp.page;
-  if(hp.page==='slot' && hp.arg){ base.scope=hp.arg; }
+  if(hp.page==='slot' && hp.arg){ if(hp.arg.startsWith('REGION::')){ base.slotRegion=hp.arg.slice(8); base.scope='__ALLSVC__'; } else if(hp.arg.startsWith('SVC::')){ base.scope=hp.arg; } }
   if(hp.page==='bunker' && hp.arg){ base.selVessel=hp.arg; }
   if(hp.page==='calc' && hp.arg){ base.calc=base.calc||{}; base.calc.cName=hp.arg; }
   if(hp.page==='contrib' && hp.arg){ base.cwWeek=hp.arg; }
