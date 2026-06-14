@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CUL Vessel Costing — FY2026 Q2</title>
+<title>CUL Dashboard — FY2026 Q2</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 
@@ -281,6 +281,9 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 .rcard .rn{font-weight:700;font-size:13.5px;line-height:1.2;}
 .rcard .rm{font-size:11px;color:var(--mut);margin-top:4px;font-variant-numeric:tabular-nums;}
 @media(max-width:760px){.rcard{flex:1 1 45%;}}
+.lp-section{font-size:13px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#7fa9da;margin:26px 0 12px;display:flex;align-items:center;gap:10px;}
+.lp-section::after{content:"";flex:1;height:1px;background:rgba(255,255,255,.1);}
+.lp-section:first-of-type{margin-top:6px;}
 </style>
 </head>
 <body class="landing">
@@ -290,77 +293,82 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
     <div class="lp-top">
       <div class="lp-brand">
         <div class="lp-logo"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M3 17l9-4 9 4"/><path d="M5 17V9l7-4 7 4v8"/><path d="M12 5v12"/></svg></div>
-        <div><div class="bt">CUL Vessel Costing</div><div class="bs">FY2026 · Q2 Suite</div></div>
+        <div><div class="bt">CUL Dashboard</div><div class="bs">FY2026 · Q2 Suite</div></div>
       </div>
       <div class="lp-meta">CUL Vessel Slot Cost_FY2026 Q2.xlsx<br>Service Profile — Jun'26.pdf</div>
     </div>
 
     <div class="lp-hero">
-      <h1>Vessel slot costing,<br><span class="accent">end to end.</span></h1>
-      <p>Analyse slot costs across services and trade regions, review past bunker studies, simulate voyage schedules, and turn any simulation into a ready-to-copy slot cost. Pick a module to begin.</p>
+      <h1>Cargo &amp; vessel economics,<br><span class="accent">in one place.</span></h1>
+      <p>Track weekly cargo contribution by port pair, break down cargo cost per unit, and analyse vessel slot economics — slot costs, bunker history, voyage simulation and a slot-cost calculator. Pick a module to begin.</p>
     </div>
 
+    <div class="lp-section">Cargo Revenue</div>
     <div class="lp-grid">
-      <div class="lp-card lp-c1" data-go="slot">
-        <span class="num">01</span>
+      <div class="lp-card lp-c1" data-go="contrib">
+        <div class="ci"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M4 19V5M4 19h16"/><rect x="7" y="11" width="3" height="6"/><rect x="12" y="7" width="3" height="10"/><rect x="17" y="13" width="3" height="4"/></svg></div>
+        <h3>Weekly Contribution Report</h3>
+        <p>Per-unit contribution margin by port pair and size type (20′ / 40′) for the selected revenue week — with cost-basis and port-pair toggles.</p>
+        <span class="go">Open module →</span>
+      </div>
+    </div>
+
+    <div class="lp-section">Cargo Cost</div>
+    <div class="lp-grid">
+      <div class="lp-card lp-c2" data-go="costunit">
+        <div class="ci"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5h4a1.5 1.5 0 010 3H10a1.5 1.5 0 000 3h4.5"/></svg></div>
+        <h3>Cost per Unit</h3>
+        <p>Search a port pair to see its cost per unit broken down by component — agent, terminal, haulage, slot and fixed costs. Each pair uses its own latest week.</p>
+        <span class="go">Open module →</span>
+      </div>
+    </div>
+
+    <div class="lp-section">Vessel</div>
+    <div class="lp-grid">
+      <div class="lp-card lp-c3" data-go="slot">
         <div class="ci"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M3 3v18h18"/><rect x="7" y="10" width="3" height="8"/><rect x="12" y="6" width="3" height="12"/><rect x="17" y="13" width="3" height="5"/></svg></div>
         <h3>Vessel Slot Cost</h3>
-        <p>Slot cost per vessel by service, grouped by trade region, with bunker-price sensitivity and full service rotations.</p>
+        <p>Slot cost per vessel by service, filtered by trade region, with bunker-price &amp; charter sensitivity and full service rotations.</p>
         <span class="go">Open module →</span>
       </div>
       <div class="lp-card lp-c2" data-go="bunker">
-        <span class="num">02</span>
         <div class="ci"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg></div>
         <h3>Bunker Simulation History</h3>
-        <p>Browse 240+ past bunker studies by vessel or search rotations and remarks — BSA, fuel tonnage, round-trip days and monsoon scenarios.</p>
+        <p>Browse past bunker studies by vessel or search rotations and remarks — BSA, fuel tonnage, round-trip days and monsoon scenarios.</p>
         <span class="go">Open module →</span>
       </div>
-      <div class="lp-card lp-c3" data-go="sim">
-        <span class="num">03</span>
+      <div class="lp-card lp-c4" data-go="sim">
         <div class="ci"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M3 18l4-8 4 5 3-7 4 10"/><path d="M2 21h20"/></svg></div>
         <h3>Voyage Simulator</h3>
         <p>Interactive voyage scheduler — distances, sea &amp; port-stay fuel, speed optimisation and voyage cost for any rotation.</p>
         <span class="go">Open module →</span>
       </div>
-      <div class="lp-card lp-c4" data-go="calc">
-        <span class="num">04</span>
+      <div class="lp-card lp-c1" data-go="calc">
         <div class="ci"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M9 7h6M9 11h6M9 15h3"/><rect x="4" y="3" width="16" height="18" rx="2"/></svg></div>
         <h3>Slot Cost Calculator</h3>
         <p>Turn a voyage simulation into a slot cost — enter charter hire, port charges and editable bunker prices, then copy an Excel-ready summary.</p>
         <span class="go">Open module →</span>
       </div>
-      <div class="lp-card lp-c1" data-go="contrib">
-        <span class="num">05</span>
-        <div class="ci"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M4 19V5M4 19h16"/><rect x="7" y="11" width="3" height="6"/><rect x="12" y="7" width="3" height="10"/><rect x="17" y="13" width="3" height="4"/></svg></div>
-        <h3>Weekly Contribution Report</h3>
-        <p>Per-unit contribution margin by port pair and size type (20′ / 40′) for the latest week — with cost-basis and port-pair toggles.</p>
-        <span class="go">Open module →</span>
-      </div>
-      <div class="lp-card lp-c2" data-go="costunit">
-        <span class="num">06</span>
-        <div class="ci"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5h4a1.5 1.5 0 010 3H10a1.5 1.5 0 000 3h4.5"/></svg></div>
-        <h3>Cost per Unit</h3>
-        <p>Search a port pair to see its cost per unit broken down by component — agent, terminal, haulage, slot and fixed costs — as cards.</p>
-        <span class="go">Open module →</span>
-      </div>
     </div>
 
-    <div class="lp-foot">CUL Vessel Costing Suite · FY2026 Q2 · Slot cost = (Charter hire + Bunker + Port &amp; Misc) ÷ effective capacity.</div>
+    <div class="lp-foot">CUL Dashboard · FY2026 · Q2 — cargo revenue, cargo cost and vessel economics in one place.</div>
   </div>
 </div>
 
 
 <div class="app">
   <aside class="sidebar">
-    <div class="brand"><div class="t">CUL Vessel Costing</div><div class="s">FY2026 · Q2</div></div>
+    <div class="brand"><div class="t">CUL Dashboard</div><div class="s">FY2026 · Q2</div></div>
     <nav class="nav">
-      <div class="grp">Dashboards</div>
+      <div class="grp">Cargo Revenue</div>
+      <a data-page="contrib"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M4 19h16"/><rect x="7" y="11" width="3" height="6"/><rect x="12" y="7" width="3" height="10"/><rect x="17" y="13" width="3" height="4"/></svg>Weekly Contribution Report</a>
+      <div class="grp">Cargo Cost</div>
+      <a data-page="costunit"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5h4a1.5 1.5 0 010 3H10a1.5 1.5 0 000 3h4.5"/></svg>Cost per Unit</a>
+      <div class="grp">Vessel</div>
       <a data-page="slot" class="on"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><rect x="7" y="10" width="3" height="8"/><rect x="12" y="6" width="3" height="12"/><rect x="17" y="13" width="3" height="5"/></svg>Vessel Slot Cost</a>
-      <a data-page="bunker"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/><circle cx="8" cy="6" r="0"/></svg>Bunker Simulation History</a>
+      <a data-page="bunker"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>Bunker Simulation History</a>
       <a data-page="sim"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 18l4-8 4 5 3-7 4 10"/><path d="M2 21h20"/></svg>Voyage Simulator</a>
       <a data-page="calc"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 7h6M9 11h6M9 15h3"/><rect x="4" y="3" width="16" height="18" rx="2"/></svg>Slot Cost Calculator</a>
-      <a data-page="contrib"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M4 19h16"/><rect x="7" y="11" width="3" height="6"/><rect x="12" y="7" width="3" height="10"/><rect x="17" y="13" width="3" height="4"/></svg>Weekly Contribution Report</a>
-      <a data-page="costunit"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5h4a1.5 1.5 0 010 3H10a1.5 1.5 0 000 3h4.5"/></svg>Cost per Unit</a>
     </nav>
     <div class="foot">Source workbook:<br>CUL Vessel Slot Cost_FY2026 Q2.xlsx<br>Service Profile — Jun'26.pdf</div>
   </aside>
