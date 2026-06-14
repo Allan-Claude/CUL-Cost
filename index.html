@@ -772,7 +772,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
         <div class="ctl"><label>Trunk VVD</label><select id="tvVVD"></select></div>
         <div class="ctl"><label>Week</label><select id="tvWeek"></select></div>
         <div class="ctl"><label>Rank by</label><select id="tvSort">
-          <option value="cm">Contribution (CM)</option><option value="cmpct">CM %</option><option value="rev">Revenue</option><option value="units">Volume (units)</option><option value="teu">Volume (TEU)</option><option value="name">Name A–Z</option></select></div>
+          <option value="cm">Contribution (CM)</option><option value="cmpct">CM %</option><option value="rev">Revenue</option><option value="teu">Volume (TEU)</option><option value="units">Volume (units)</option><option value="name">Name A–Z</option></select></div>
         <div class="ctl"><label>Search</label><input type="text" id="tvSearch" placeholder="filter values…" style="min-width:180px"></div>
       </div>
       <div class="hint">Trade analysis by <b>Booking Trunk VVD</b> — volume, revenue and contribution broken down across POL, destination, booking office, shipper and consignee for the selected week. Pick a Trunk VVD or “All”. Source: Contribution_by_Booking.xlsx (latest 10 weeks).</div>
@@ -785,6 +785,12 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
         <button data-d="bo">Booking Office</button>
         <button data-d="shipper">Shipper</button>
         <button data-d="cnnm">Consignee</button>
+      </div>
+
+      <div class="panel">
+        <h2 id="tvChartTitle">Contribution by POL <span class="note" id="tvChartNote"></span></h2>
+        <div class="chartbox" style="height:300px"><canvas id="tvChart"></canvas></div>
+        <div class="legend">Top values by contribution for the selected dimension. Bars coloured green for positive CM, red for negative. Switch the dimension tabs above to re-chart.</div>
       </div>
 
       <div class="panel">
@@ -1758,18 +1764,26 @@ function renderAnomaly(){ anInitOnce();
 
 /* ===================== PAGE 9 : TRUNK VVD DASHBOARD ===================== */
 // TVVD.recs: [wk,tv,dim,value,units,teu,rev,cm,bls,negbls]; TVVD.totals: [wk,tv,units,teu,rev,cm,bls,negbls]
-let tvVVDval='ALL', tvWeekVal=null, tvDim='pol', tvSortV='cm', tvSortDir=-1, tvInit=false;
+let tvVVDval='ALL', tvWeekVal=null, tvDim='pol', tvSortV='cm', tvSortDir=-1, tvInit=false, tvChart=null;
 function tvSubstWeeks(){ const c={}; TVVD.totals.forEach(t=>{ c[t[0]]=(c[t[0]]||0)+t[6]; }); return TVVD.weeks.filter(w=>(c[w]||0)>=300); }
 function tvDefaultWeek(){ const s=tvSubstWeeks(); return s.length?s[s.length-1]:TVVD.weeks[TVVD.weeks.length-1]; }
+function tvBuildVVDList(){
+  const vsel=document.getElementById('tvVVD'); const cur=tvVVDval;
+  const wk=tvWeekVal||tvDefaultWeek();
+  // VVDs present in this week, ranked by that week's total CM desc
+  const inWk=TVVD.totals.filter(t=>t[0]===wk).sort((a,b)=>b[5]-a[5]);
+  vsel.innerHTML='';
+  const all=document.createElement('option'); all.value='ALL'; all.textContent='All Trunk VVDs ('+inWk.length+')'; vsel.appendChild(all);
+  inWk.forEach(t=>{const o=document.createElement('option');o.value=t[1];o.textContent=t[1];vsel.appendChild(o);});
+  // keep selection if still present, else reset to ALL
+  if(cur!=='ALL' && inWk.some(t=>t[1]===cur)){ vsel.value=cur; } else { tvVVDval='ALL'; vsel.value='ALL'; }
+}
 function tvInitOnce(){ if(tvInit)return; tvInit=true;
   const wsel=document.getElementById('tvWeek'); TVVD.weeks.forEach(w=>{const o=document.createElement('option');o.value=w;o.textContent=fmtWeek(w);wsel.appendChild(o);});
   tvWeekVal=tvDefaultWeek(); wsel.value=tvWeekVal;
-  // VVD list scoped to weeks (sorted by total CM desc within default week first, else alpha)
-  const vsel=document.getElementById('tvVVD');
-  const all=document.createElement('option'); all.value='ALL'; all.textContent='All Trunk VVDs'; vsel.appendChild(all);
-  [...new Set(TVVD.totals.map(t=>t[1]))].sort().forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;vsel.appendChild(o);});
-  wsel.onchange=()=>{tvWeekVal=wsel.value;renderTV();saveState&&saveState();};
-  vsel.onchange=()=>{tvVVDval=vsel.value;renderTV();saveState&&saveState();};
+  tvBuildVVDList();
+  wsel.onchange=()=>{tvWeekVal=wsel.value;tvBuildVVDList();renderTV();saveState&&saveState();};
+  document.getElementById('tvVVD').onchange=function(){tvVVDval=this.value;renderTV();saveState&&saveState();};
   document.getElementById('tvSort').onchange=()=>{tvSortV=document.getElementById('tvSort').value;tvSortDir=(tvSortV==='name')?1:-1;renderTV();};
   document.getElementById('tvSearch').oninput=renderTV;
   document.querySelectorAll('#tvDimTabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#tvDimTabs button').forEach(x=>x.classList.remove('on'));b.classList.add('on');tvDim=b.dataset.d;renderTV();saveState&&saveState();});
@@ -1782,7 +1796,7 @@ function renderTV(){ tvInitOnce();
   TVVD.totals.forEach(t=>{ if(t[0]!==wk) return; if(tvVVDval!=='ALL'&&t[1]!==tvVVDval) return; kt[0]+=t[2];kt[1]+=t[3];kt[2]+=t[4];kt[3]+=t[5];kt[4]+=t[6];kt[5]+=t[7]; });
   const cmpct = kt[2]>0? kt[3]/kt[2]*100 : 0;
   document.getElementById('tvKpis').innerHTML=
-    kpi('Volume', fmt0(kt[0])+' u', fmt0(kt[1])+' TEU')+
+    kpi('Volume', fmt0(kt[1])+' TEU', fmt0(kt[0])+' units')+
     kpi('Revenue', usd(kt[2]), fmtWeek(wk))+
     kpi('Contribution', usd(kt[3]), '')+
     kpi('CM %', (kt[2]>0?cmpct.toFixed(1)+'%':'—'), '')+
@@ -1798,6 +1812,8 @@ function renderTV(){ tvInitOnce();
   if(q) rows=rows.filter(r=>String(r.name).toUpperCase().includes(q));
   rows.sort((a,b)=>{let x=a[tvSortV],y=b[tvSortV]; if(tvSortV==='name')return tvSortDir*String(x).localeCompare(String(y)); return tvSortDir*((x||0)-(y||0));});
   document.getElementById('tvDimTitle').firstChild.textContent='By '+TVVD.dimLabels[tvDim]+' ';
+  // CM chart: top values by contribution (use a CM-sorted copy so chart is meaningful regardless of table sort)
+  drawTVChart(rows, wk);
   document.getElementById('tvTblNote').textContent='· '+fmtWeek(wk)+' · '+(tvVVDval==='ALL'?'all VVDs':tvVVDval)+' · '+rows.length+' '+TVVD.dimLabels[tvDim];
   const cmCell=v=> v<0?'<span class="up">'+usd(v)+'</span>':usd(v);
   const pctCell=v=> v<0?'<span class="up">'+v.toFixed(1)+'%</span>':v.toFixed(1)+'%';
@@ -1808,6 +1824,20 @@ function renderTV(){ tvInitOnce();
     <td>${cmCell(r.cm)}</td><td>${cmCell(r.cmpu)}</td><td>${pctCell(r.cmpct)}</td>
     <td>${r.neg>0?'<span class="up">'+r.neg+'</span>':'0'}</td></tr>`).join('')
     : '<tr><td colspan="9" class="emptynote">No data for this Trunk VVD / week / filter.</td></tr>';
+}
+function drawTVChart(rows, wk){
+  const top=[...rows].sort((a,b)=>b.cm-a.cm).slice(0,12);
+  const labels=top.map(r=>{const n=String(r.name);return n.length>14?n.slice(0,13)+'…':n;});
+  const data=top.map(r=>Math.round(r.cm));
+  const colors=data.map(v=>v<0?'#d6453c':'#1aa06d');
+  document.getElementById('tvChartTitle').firstChild.textContent='Contribution by '+TVVD.dimLabels[tvDim]+' ';
+  document.getElementById('tvChartNote').textContent='· top '+top.length+' by CM · '+fmtWeek(wk);
+  const cfg={type:'bar',data:{labels,datasets:[{data,backgroundColor:colors,borderRadius:3}]},
+    options:{maintainAspectRatio:false,responsive:true,
+      plugins:{legend:{display:false},tooltip:{callbacks:{title:t=>top[t[0].dataIndex].name,label:c=>'CM '+usd(c.parsed.y)+'  ('+(top[c.dataIndex].cmpct).toFixed(1)+'% · '+fmt0(top[c.dataIndex].teu)+' TEU)'}}},
+      scales:{x:{ticks:{color:'#647387',maxRotation:55,minRotation:35,font:{size:10}},grid:{display:false}},
+              y:{ticks:{color:'#647387',callback:v=>'$'+fmt0(v)},grid:{color:'#e7edf4'},title:{display:true,text:'Contribution (USD)',color:'#647387'}}}}};
+  if(tvChart)tvChart.destroy(); tvChart=new Chart(document.getElementById('tvChart'),cfg);
 }
 function escapeHtml(s){ return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
@@ -1866,7 +1896,7 @@ function applyState(s, fromHash){
     if(typeof cuInitOnce==='function'){ cuInitOnce(); if(s.cuPairDef){cuPairDef=s.cuPairDef;document.querySelectorAll('#cuPair button').forEach(b=>b.classList.toggle('on',b.dataset.p===cuPairDef));} if(s.cuBasis){cuBasis=s.cuBasis;document.querySelectorAll('#cuBasis button').forEach(b=>b.classList.toggle('on',b.dataset.b===cuBasis));} if(s.cuSize){cuSize=s.cuSize;document.querySelectorAll('#cuSize button').forEach(b=>b.classList.toggle('on',b.dataset.z===cuSize));} }
     if(typeof ncInitOnce==='function'){ ncInitOnce(); if(s.ncPairDef){ncPairDef=s.ncPairDef;document.querySelectorAll('#ncPair button').forEach(b=>b.classList.toggle('on',b.dataset.p===ncPairDef));} if(s.ncSize){ncSize=s.ncSize;document.querySelectorAll('#ncSize button').forEach(b=>b.classList.toggle('on',b.dataset.z===ncSize));} if(s.ncWeek){ncWeek=s.ncWeek; const w=document.getElementById('ncWeek'); if(w&&[...w.options].some(o=>o.value===s.ncWeek))w.value=s.ncWeek;} }
     if(typeof anInitOnce==='function'){ anInitOnce(); if(s.anPeer){anPeer=s.anPeer;document.querySelectorAll('#anPeer button').forEach(b=>b.classList.toggle('on',b.dataset.p===anPeer));} if(s.anPairDef){anPairDef=s.anPairDef;document.querySelectorAll('#anPair button').forEach(b=>b.classList.toggle('on',b.dataset.d===anPairDef));} if(s.anWob){anWob=s.anWob;const wob=document.getElementById('anWob');if(wob){wob.value=anWob;document.getElementById('anWobVal').textContent=anWob.toFixed(1)+' wobbles';}} if(s.anType){anType=s.anType;const at=document.getElementById('anType');if(at)at.value=anType;} if(s.anWeek){anWeek=s.anWeek;const w=document.getElementById('anWeek');if(w&&[...w.options].some(o=>o.value===s.anWeek))w.value=s.anWeek;} }
-    if(typeof tvInitOnce==='function'){ tvInitOnce(); if(s.tvDim){tvDim=s.tvDim;document.querySelectorAll('#tvDimTabs button').forEach(b=>b.classList.toggle('on',b.dataset.d===tvDim));} if(s.tvVVD){tvVVDval=s.tvVVD;const v=document.getElementById('tvVVD');if(v&&[...v.options].some(o=>o.value===s.tvVVD))v.value=s.tvVVD;} if(s.tvWeek){tvWeekVal=s.tvWeek;const w=document.getElementById('tvWeek');if(w&&[...w.options].some(o=>o.value===s.tvWeek))w.value=s.tvWeek;} }
+    if(typeof tvInitOnce==='function'){ tvInitOnce(); if(s.tvDim){tvDim=s.tvDim;document.querySelectorAll('#tvDimTabs button').forEach(b=>b.classList.toggle('on',b.dataset.d===tvDim));} if(s.tvVVD){tvVVDval=s.tvVVD;const v=document.getElementById('tvVVD');if(v&&[...v.options].some(o=>o.value===s.tvVVD))v.value=s.tvVVD;} if(s.tvWeek){tvWeekVal=s.tvWeek;const w=document.getElementById('tvWeek');if(w&&[...w.options].some(o=>o.value===s.tvWeek))w.value=s.tvWeek;} if(typeof tvBuildVVDList==='function')tvBuildVVDList(); if(s.tvVVD){const v=document.getElementById('tvVVD');if(v&&[...v.options].some(o=>o.value===s.tvVVD)){tvVVDval=s.tvVVD;v.value=s.tvVVD;}} }
   }catch(e){}
   restoring=false;
   // re-render with restored values
