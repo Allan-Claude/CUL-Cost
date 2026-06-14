@@ -415,12 +415,12 @@ body.landing .main{display:none;}
         <div class="panel">
           <h2>3 · Bunker price sensitivity <span class="note" id="sBunkNote"></span></h2>
           <div class="chartbox" style="height:300px"><canvas id="sBunkChart"></canvas></div>
-          <div class="calcnote">Slot cost as all three fuel prices scale together from −50% to +50% of the current settings. Dashed marker = current prices.</div>
+          <div class="calcnote">Slot cost vs the absolute baseline fuel price ($/MT). Baseline is HSFO if the vessel burns HSFO, otherwise LSFO; the other fuels scale proportionally. The marked point is the current price.</div>
         </div>
         <div class="panel">
           <h2>3 · Charter-hire sensitivity <span class="note" id="sHireNote"></span></h2>
           <div class="chartbox" style="height:300px"><canvas id="sHireChart"></canvas></div>
-          <div class="calcnote">Slot cost as the charter-hire daily rate scales from −50% to +50% of the current rate. Dashed marker = current rate.</div>
+          <div class="calcnote">Slot cost vs the absolute charter-hire daily rate, in $2,500 steps. The marked point is the current rate.</div>
         </div>
       </div>
 
@@ -760,30 +760,55 @@ function slotAt(bunkMult, hireMult){
   const total=hire+bsub+cnum('cPort')+cnum('cMisc');
   return cap>0? total/cap : 0;
 }
-const SENS_PCTS=[-50,-40,-30,-20,-10,0,10,20,30,40,50];
-function sensCfg(dataArr, lineColor, yTitle){
+function sensCfg(labels, dataArr, lineColor, xTitle, yTitle, currentIdx){
   return {type:'line',
-    data:{labels:SENS_PCTS.map(p=>(p>=0?'+':'')+p+'%'),
+    data:{labels,
       datasets:[{data:dataArr,borderColor:lineColor,backgroundColor:lineColor,borderWidth:2,
-        pointRadius:SENS_PCTS.map(p=>p===0?5:0),pointHoverRadius:5,
-        pointBackgroundColor:SENS_PCTS.map(p=>p===0?'#1c2b3a':lineColor),tension:.25}]},
+        pointRadius:dataArr.map((_,i)=>i===currentIdx?6:0),pointHoverRadius:6,
+        pointBackgroundColor:dataArr.map((_,i)=>i===currentIdx?'#1c2b3a':lineColor),tension:.2}]},
     options:{maintainAspectRatio:false,responsive:true,
-      plugins:{legend:{display:false},tooltip:{callbacks:{title:t=>'Change '+t[0].label,label:c=>'Slot '+usd(c.parsed.y)}}},
-      scales:{x:{ticks:{color:'#647387'},grid:{color:'#e7edf4'},title:{display:true,text:'change vs current',color:'#647387'}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{
+        title:t=>xTitle.split(' (')[0]+': '+t[0].label,
+        label:c=>'Slot '+usd(c.parsed.y)+(c.dataIndex===currentIdx?'  (current)':'')}}},
+      scales:{x:{ticks:{color:'#647387'},grid:{color:'#e7edf4'},title:{display:true,text:xTitle,color:'#647387'}},
               y:{ticks:{color:'#647387',callback:v=>'$'+fmt0(v)},grid:{color:'#e7edf4'},title:{display:true,text:yTitle,color:'#647387'}}}}};
 }
+// Bunker sensitivity: x-axis = absolute price of the BASELINE fuel ($/MT).
+// Baseline = HSFO if the vessel consumes HSFO, else LSFO. Other fuels scale by the same ratio.
 function drawBunkerSens(){
-  const data=SENS_PCTS.map(p=>+slotAt(1+p/100,1).toFixed(1));
-  const base=slotAt(1,1), lo=data[0], hi=data[data.length-1];
-  cg('sBunkNote').textContent='· '+usd(lo)+' → '+usd(hi)+' per slot';
-  const cfg=sensCfg(data,'#d98a00','Slot cost (USD/slot)');
+  const usesHsfo = cnum('cHsfoT')>0;
+  const baseFuel = usesHsfo ? 'HSFO' : 'LSFO';
+  const basePriceCur = usesHsfo ? cnum('cHsfoP') : cnum('cLsfoP');
+  // build an absolute-price sweep around the current baseline price (round steps)
+  const cur = basePriceCur>0 ? basePriceCur : (usesHsfo?600:700);
+  const step = cur>=600 ? 100 : 50;          // sensible round increment
+  const half = 5;                             // 5 steps each side
+  const prices=[]; for(let k=-half;k<=half;k++){ prices.push(Math.max(0, Math.round((cur+k*step)/1)*1)); }
+  const lt=cnum('cLsfoT'),ht=cnum('cHsfoT'),mt=cnum('cMgoT');
+  const lpCur=cnum('cLsfoP'),hpCur=cnum('cHsfoP'),mpCur=cnum('cMgoP');
+  const cap=cnum('cCap')||0, days=cnum('cDays'), fixed=cnum('cHireRate')*days+cnum('cPort')+cnum('cMisc');
+  const data=prices.map(p=>{
+    const ratio = cur>0 ? p/cur : 1;          // all fuels scale with the baseline's movement
+    const bsub = lt*lpCur*ratio + ht*hpCur*ratio + mt*mpCur*ratio;
+    return cap>0 ? +((fixed+bsub)/cap).toFixed(1) : 0;
+  });
+  const curIdx = prices.indexOf(cur);
+  cg('sBunkNote').textContent='· baseline '+baseFuel+' @ $'+fmt0(cur)+'/MT · '+usd(data[0])+' → '+usd(data[data.length-1]);
+  const cfg=sensCfg(prices.map(p=>'$'+fmt0(p)), data, '#d98a00', baseFuel+' price ($/MT)', 'Slot cost (USD/slot)', curIdx);
   if(sBunkChart)sBunkChart.destroy(); sBunkChart=new Chart(cg('sBunkChart'),cfg);
 }
+// Charter-hire sensitivity: x-axis = absolute daily rate, in $2,500 increments.
 function drawHireSens(){
-  const data=SENS_PCTS.map(p=>+slotAt(1,1+p/100).toFixed(1));
-  const lo=data[0], hi=data[data.length-1];
-  cg('sHireNote').textContent='· '+usd(lo)+' → '+usd(hi)+' per slot';
-  const cfg=sensCfg(data,'#1d6fe0','Slot cost (USD/slot)');
+  const cur=cnum('cHireRate'), days=cnum('cDays'), cap=cnum('cCap')||0;
+  const STEP=2500, half=5;
+  const rates=[]; for(let k=-half;k<=half;k++){ rates.push(Math.max(0, cur+k*STEP)); }
+  const lt=cnum('cLsfoT'),ht=cnum('cHsfoT'),mt=cnum('cMgoT');
+  const bsub=lt*cnum('cLsfoP')+ht*cnum('cHsfoP')+mt*cnum('cMgoP');
+  const fixedNonHire=bsub+cnum('cPort')+cnum('cMisc');
+  const data=rates.map(r=> cap>0 ? +((r*days+fixedNonHire)/cap).toFixed(1) : 0);
+  const curIdx=rates.indexOf(cur);
+  cg('sHireNote').textContent='· current $'+fmt0(cur)+'/day · '+usd(data[0])+' → '+usd(data[data.length-1]);
+  const cfg=sensCfg(rates.map(r=>'$'+fmt0(r)), data, '#1d6fe0', 'Charter hire rate ($/day)', 'Slot cost (USD/slot)', curIdx);
   if(sHireChart)sHireChart.destroy(); sHireChart=new Chart(cg('sHireChart'),cfg);
 }
 // paste parser
