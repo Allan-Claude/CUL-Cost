@@ -336,23 +336,24 @@ body.landing .main{display:none;}
     <!-- ===== PAGE 3 : VOYAGE SIMULATOR ===== -->
     <div class="page" id="page-sim">
       <div class="simbar">
-        <span class="l">Live Voyage Schedule Simulator — embedded from leahliul.github.io. After running a simulation, send the fuel results to the Slot Cost Calculator.</span>
+        <span class="l">Live Voyage Schedule Simulator — hosted on your GitHub (forked from LeahLiuL/Schedule-Simulation). After running a simulation, send the fuel results to the Slot Cost Calculator.</span>
         <span style="display:flex;gap:8px">
           <button class="handoff" id="toCalcBtn">→ Send results to Slot Cost Calculator</button>
-          <a class="openext" href="https://leahliul.github.io/Schedule-Simulation/shipping_schedule.html" target="_blank" rel="noopener">Open in new tab ↗</a>
+          <a class="openext" href="https://allan-claude.github.io/Schedule-Simulation/shipping_schedule.html" target="_blank" rel="noopener">Open in new tab ↗</a>
         </span>
       </div>
       <iframe class="simframe" id="simFrame" title="Voyage Schedule Simulator" loading="lazy"
-        referrerpolicy="no-referrer" src="about:blank" data-src="https://leahliul.github.io/Schedule-Simulation/shipping_schedule.html"></iframe>
+        referrerpolicy="no-referrer" src="about:blank" data-src="https://allan-claude.github.io/Schedule-Simulation/shipping_schedule.html"></iframe>
     </div>
 
     <!-- ===== PAGE 4 : SLOT COST CALCULATOR ===== -->
     <div class="page" id="page-calc"><div class="wrap">
 
       <div class="panel">
-        <h2>1 · Bring in voyage results <span class="note">· paste from the simulator, or type below</span></h2>
+        <h2>1 · Bring in voyage results <span class="note">· pull straight from the simulator, paste its text, or type below</span></h2>
         <textarea class="pastebox" id="calcPaste" placeholder="Paste the simulator's result text here — e.g. the Estimated Fuel / Voyage Cost Summary block. The calculator will pull out Grand Total LSFO, Grand Total MGO, run days and distance automatically."></textarea>
         <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="handoff" id="calcPull">↺ Pull latest from simulator</button>
           <button class="btn" id="calcParse">Parse pasted text</button>
           <button class="btn" id="calcClear">Clear</button>
           <span id="calcParseTags"></span>
@@ -833,7 +834,59 @@ xlRecalc();
 
 // handoff button on simulator page -> go to calculator
 const toCalcBtn=document.getElementById('toCalcBtn');
-if(toCalcBtn) toCalcBtn.onclick=()=>{ showPage('calc'); cg('calcPaste').focus(); };
+// Same-origin auto-transfer: read the simulator iframe's result fields directly.
+function readSimResults(){
+  const f=document.getElementById('simFrame');
+  let doc=null;
+  try{ doc=f && (f.contentDocument || (f.contentWindow && f.contentWindow.document)); }catch(e){ doc=null; }
+  if(!doc) return null; // cross-origin or not loaded
+  const num=id=>{ const el=doc.getElementById(id); if(!el) return null;
+    const m=String(el.textContent||'').replace(/,/g,'').match(/-?\d+(?:\.\d+)?/); return m?parseFloat(m[0]):null; };
+  const r={
+    lsfo: num('fs-total-lsfo'),   // Grand Total LSFO (sea + port stay)
+    mgo:  num('fs-total-mgo'),    // Grand Total MGO
+    days: num('fs-rundays'),      // Total Run Days
+    dist: num('fs-dist')          // Total Distance (info)
+  };
+  // consider it a valid run only if at least LSFO or MGO has a numeric value
+  if(r.lsfo==null && r.mgo==null) return {empty:true};
+  return r;
+}
+function applySimToCalc(r){
+  if(r.lsfo!=null) cg('cLsfoT').value=r.lsfo;
+  if(r.mgo!=null)  cg('cMgoT').value=r.mgo;
+  if(r.days!=null) cg('cDays').value=r.days;
+  recalcSlot();
+  const tags=[];
+  if(r.lsfo!=null) tags.push(['LSFO '+fmt0(r.lsfo)+' MT',true]);
+  if(r.mgo!=null)  tags.push(['MGO '+fmt0(r.mgo)+' MT',true]);
+  if(r.days!=null) tags.push(['Run days '+r.days,true]);
+  if(r.dist!=null) tags.push(['Distance '+fmt0(r.dist)+' nm (info)',true]);
+  tags.push(['Auto-pulled from simulator ✓',true]);
+  cg('calcParseTags').innerHTML=tags.map(([t,hit])=>`<span class="parsetag${hit?' hit':''}">${t}</span>`).join('');
+}
+if(toCalcBtn) toCalcBtn.onclick=()=>{
+  const r=readSimResults();
+  showPage('calc');
+  if(r && !r.empty){
+    applySimToCalc(r);
+  } else if(r && r.empty){
+    cg('calcParseTags').innerHTML='<span class="parsetag">No simulation results yet — run a simulation first, or paste/enter values below.</span>';
+    cg('calcPaste').focus();
+  } else {
+    // could not read (e.g. simulator hosted on a different origin) -> fallback to paste box
+    cg('calcParseTags').innerHTML='<span class="parsetag">Couldn\'t auto-read the simulator — paste its result text below instead.</span>';
+    cg('calcPaste').focus();
+  }
+};
+// "Pull latest from simulator" button on the calculator page itself
+const pullBtn=document.getElementById('calcPull');
+if(pullBtn) pullBtn.onclick=()=>{
+  const r=readSimResults();
+  if(r && !r.empty){ applySimToCalc(r); }
+  else if(r && r.empty){ cg('calcParseTags').innerHTML='<span class="parsetag">No simulation results yet — run a simulation on the Voyage Simulator page first.</span>'; }
+  else { cg('calcParseTags').innerHTML='<span class="parsetag">Couldn\'t auto-read the simulator (open the Voyage Simulator page once so it loads, then retry) — or use the paste box.</span>'; }
+};
 
 
 renderSlot();
