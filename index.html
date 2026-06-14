@@ -211,9 +211,9 @@ body.landing .main{display:none;}
 .homebtn:hover{border-color:var(--accent);color:var(--accent);}
 .brand{cursor:pointer;}
 
-/* --- page transition animation --- */
-@keyframes pageIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
-.page.on{animation:pageIn .28s cubic-bezier(.22,.61,.36,1);}
+/* --- page transition animation (richer, directional) --- */
+@keyframes pageIn{from{opacity:0;transform:translateY(10px) scale(.994);}to{opacity:1;transform:translateY(0) scale(1);}}
+.page.on{animation:pageIn .32s cubic-bezier(.16,.84,.44,1);}
 @keyframes cardIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
 body.landing .lp-card{animation:cardIn .4s cubic-bezier(.22,.61,.36,1) both;}
 body.landing .lp-card:nth-child(1){animation-delay:.03s;}
@@ -221,8 +221,25 @@ body.landing .lp-card:nth-child(2){animation-delay:.08s;}
 body.landing .lp-card:nth-child(3){animation-delay:.13s;}
 body.landing .lp-card:nth-child(4){animation-delay:.18s;}
 .main{transition:opacity .2s ease;}
+/* header text settle on page change */
+@keyframes headIn{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:translateY(0);}}
+.page.on ~ * #pageTitle{}
+header h1, header .sub{transition:opacity .25s ease;}
+header.swap h1, header.swap .sub{animation:headIn .3s cubic-bezier(.16,.84,.44,1);}
+/* --- staggered reveal for rows / cards on render --- */
+@keyframes revealIn{from{opacity:0;transform:translateY(7px);}to{opacity:1;transform:translateY(0);}}
+.reveal>*{animation:revealIn .34s cubic-bezier(.16,.84,.44,1) both;}
+.reveal>*:nth-child(1){animation-delay:.01s;} .reveal>*:nth-child(2){animation-delay:.03s;}
+.reveal>*:nth-child(3){animation-delay:.05s;} .reveal>*:nth-child(4){animation-delay:.07s;}
+.reveal>*:nth-child(5){animation-delay:.09s;} .reveal>*:nth-child(6){animation-delay:.11s;}
+.reveal>*:nth-child(7){animation-delay:.13s;} .reveal>*:nth-child(8){animation-delay:.15s;}
+.reveal>*:nth-child(9){animation-delay:.17s;} .reveal>*:nth-child(n+10){animation-delay:.19s;}
+/* --- sliding sidebar active indicator --- */
+.nav{position:relative;}
+.nav-indicator{position:absolute;left:6px;width:3px;border-radius:3px;background:#fff;opacity:0;transition:transform .32s cubic-bezier(.16,.84,.44,1),height .32s cubic-bezier(.16,.84,.44,1),opacity .2s;pointer-events:none;}
 @media (prefers-reduced-motion: reduce){
-  .page.on,body.landing .lp-card,.main{animation:none!important;transition:none!important;}
+  .page.on,body.landing .lp-card,.main,.reveal>*,header.swap h1,header.swap .sub{animation:none!important;transition:none!important;}
+  .nav-indicator{transition:none!important;}
 }
 /* --- recalc value-change flash --- */
 @keyframes flashUp{0%{background:#fff6d6;}100%{background:transparent;}}
@@ -886,6 +903,10 @@ function showPage(id){
   };
   document.getElementById('pageTitle').textContent=titles[id]||'';
   document.getElementById('pageSub').textContent=subs[id]||'';
+  // header settle animation
+  const hdr=document.querySelector('.main header'); if(hdr){ hdr.classList.remove('swap'); void hdr.offsetWidth; hdr.classList.add('swap'); }
+  // slide the sidebar active indicator
+  moveNavIndicator(id);
   if(id==='sim'){ loadSimFrame(); }
   if(id==='calc'){ if(typeof recalcSlot==='function') recalcSlot(); }
   if(id==='contrib'){ if(typeof renderContrib==='function') renderContrib(); }
@@ -893,6 +914,9 @@ function showPage(id){
   if(id==='negcm'){ if(typeof renderNegCM==='function') renderNegCM(); }
   if(id==='anomaly'){ if(typeof renderAnomaly==='function') renderAnomaly(); }
   if(id==='trunkvvd'){ if(typeof renderTV==='function') renderTV(); }
+  // staggered reveal of the page's primary list once per navigation
+  setTimeout(()=>{ const map={contrib:'#cwTbl tbody',negcm:'#ncTbl tbody',anomaly:'#anTbl tbody',trunkvvd:'#tvTbl tbody',slot:'#tbl tbody',bunker:'#hTbl tbody',costunit:'#cuCards'};
+    const sel=map[id]; if(sel){ const c=document.querySelector(sel); if(c && typeof retriggerReveal==='function') retriggerReveal(c); } }, 30);
   if(typeof syncHash==='function') syncHash();
 }
 // --- simulator iframe load + offline handling ---
@@ -1126,7 +1150,35 @@ function renderResults(){
   drawHistTable(rs);
   hTblNote.textContent='· '+rs.length+' record(s)';
 }
-function kpi(k,v,d){return `<div class="kpi"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d||''}</div></div>`;}
+function kpi(k,v,d){return `<div class="kpi"><div class="k">${k}</div><div class="v" data-countup="${String(v).replace(/"/g,'&quot;')}">${v}</div><div class="d">${d||''}</div></div>`;}
+// animate numeric KPI values rolling to their target; preserves prefix/suffix ($ , % MT u etc.)
+const _kpiPrev=new WeakMap();
+function animateKpis(container){
+  if(!container) return;
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  container.querySelectorAll('.v[data-countup]').forEach(el=>{
+    const txt=el.getAttribute('data-countup'); 
+    const m=String(txt).match(/^(\D*)(-?[\d,]*\.?\d+)(.*)$/);
+    if(!m || reduce){ el.textContent=txt; return; }
+    const pre=m[1], suf=m[3]; const target=parseFloat(m[2].replace(/,/g,''));
+    const decimals=(m[2].split('.')[1]||'').length;
+    const prevKey=el; let from=_kpiPrev.get(prevKey); if(from==null||isNaN(from)) from=0;
+    _kpiPrev.set(prevKey, target);
+    if(from===target){ el.textContent=txt; return; }
+    const dur=520, t0=performance.now();
+    const fmtN=n=> (decimals? n.toFixed(decimals): Math.round(n)).toLocaleString('en-US',{minimumFractionDigits:decimals,maximumFractionDigits:decimals});
+    function step(now){ let p=Math.min(1,(now-t0)/dur); const e=1-Math.pow(1-p,3); const cur=from+(target-from)*e;
+      el.textContent=pre+fmtN(cur)+suf; if(p<1) requestAnimationFrame(step); else el.textContent=txt; }
+    requestAnimationFrame(step);
+  });
+}
+(function(){
+  function hook(id){ const el=document.getElementById(id); if(!el) return;
+    const mo=new MutationObserver(()=>animateKpis(el)); mo.observe(el,{childList:true}); }
+  // run after DOM is ready
+  function setup(){ ['hKpis','cwKpis','ncKpis','anKpis','tvKpis'].forEach(hook); }
+  if(document.readyState!=='loading') setup(); else document.addEventListener('DOMContentLoaded',setup);
+})();
 
 function badge(sc){const c=sc==='Monsoon'?'b-mon':sc==='No Monsoon'?'b-nomon':'b-other';return `<span class="badge ${c}">${sc}</span>`;}
 function drawHistTable(rs){
@@ -1172,7 +1224,16 @@ document.querySelectorAll('#hTbl th').forEach(th=>th.onclick=()=>{const k=th.dat
 document.querySelectorAll('.nav a').forEach(a=>a.onclick=e=>{e.preventDefault();showPage(a.dataset.page);});
 
 // ----- Landing / module navigation -----
-function openModule(id){ document.body.classList.remove('landing'); showPage(id); window.scrollTo(0,0); }
+function moveNavIndicator(id){
+  const nav=document.querySelector('.nav'); if(!nav) return;
+  let ind=nav.querySelector('.nav-indicator'); if(!ind){ ind=document.createElement('div'); ind.className='nav-indicator'; nav.appendChild(ind); }
+  const a=nav.querySelector('.nav a[data-page="'+id+'"]'); if(!a){ ind.style.opacity='0'; return; }
+  const top=a.offsetTop, h=a.offsetHeight;
+  ind.style.height=Math.max(0,h-12)+'px';
+  ind.style.transform='translateY('+(top+6)+'px)';
+  ind.style.opacity='1';
+}
+function openModule(id){ document.body.classList.remove('landing'); showPage(id); window.scrollTo(0,0); setTimeout(()=>moveNavIndicator(id),0); }
 function goHome(){ document.body.classList.add('landing'); currentPage='home'; if(typeof syncHash==='function') syncHash(); window.scrollTo(0,0); }
 document.querySelectorAll('.lp-card[data-go]').forEach(c=>{ c.setAttribute('tabindex','0'); c.setAttribute('role','button');
   c.onclick=()=>openModule(c.dataset.go); c.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openModule(c.dataset.go);}}; });
@@ -1637,7 +1698,7 @@ function renderCostUnit(){
       <div class="cucomp">${comp}</div>
       <div class="cucontrib"><span>Contribution / unit</span><span class="${cclass}">${usd(cpu)}</span></div>
     </div>`;
-  }).join('');
+  }).join(''); retriggerReveal(grid);
 }
 
 /* ===================== ANOMALY DATA HELPERS ===================== */
@@ -1879,6 +1940,7 @@ function drawTVChart(rows, wk){
               y:{ticks:{color:'#647387',callback:v=>'$'+fmt0(v)},grid:{color:'#e7edf4'},title:{display:true,text:'Contribution (USD)',color:'#647387'}}}}};
   if(tvChart)tvChart.destroy(); tvChart=new Chart(document.getElementById('tvChart'),cfg);
 }
+function retriggerReveal(el){ if(!el) return; el.classList.remove('reveal'); void el.offsetWidth; el.classList.add('reveal'); }
 function escapeHtml(s){ return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
 /* ===================== UX: PERSISTENCE, HASH ROUTING, FLASH, BANNER ===================== */
