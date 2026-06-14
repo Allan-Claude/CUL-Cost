@@ -272,6 +272,8 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 .cucomp .cp{font-variant-numeric:tabular-nums;color:var(--mut);width:42px;text-align:right;}
 .cucard .cucontrib{margin-top:11px;padding-top:9px;border-top:1px dashed var(--line);font-size:12.5px;display:flex;justify-content:space-between;}
 .cucard .cucontrib .pos{color:var(--good);font-weight:700;} .cucard .cucontrib .neg{color:var(--bad);font-weight:700;}
+.cuwkrow{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 2px;}
+.cuwk{font-size:10.5px;color:var(--mut);background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-variant-numeric:tabular-nums;}
 </style>
 </head>
 <body class="landing">
@@ -608,7 +610,6 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
     <!-- ===== PAGE 6 : COST PER UNIT ===== -->
     <div class="page" id="page-costunit"><div class="wrap">
       <div class="controls">
-        <div class="ctl"><label>Revenue week</label><select id="cuWeek"></select></div>
         <div class="ctl"><label>Port pair</label>
           <div class="seg" id="cuPair"><button data-p="polpod" class="on">POL → POD</button><button data-p="pordel">POR → DEL</button></div>
         </div>
@@ -620,10 +621,10 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
         </div>
         <div class="ctl"><label>Search port pair</label><input type="text" id="cuSearch" placeholder="e.g. SAJED, CNSHA…" style="min-width:220px"></div>
         <div class="ctl"><label>Sort by</label>
-          <select id="cuSort"><option value="cost">Highest cost / unit</option><option value="costlow">Lowest cost / unit</option><option value="contrib">Highest contribution / unit</option><option value="contriblow">Lowest contribution / unit</option><option value="units">Most units</option><option value="pair">Port pair A–Z</option></select>
+          <select id="cuSort"><option value="cost">Highest cost / unit</option><option value="costlow">Lowest cost / unit</option><option value="contrib">Highest contribution / unit</option><option value="contriblow">Lowest contribution / unit</option><option value="units">Most units</option><option value="week">Most recent week</option><option value="pair">Port pair A–Z</option></select>
         </div>
       </div>
-      <div class="hint">Search a port pair to understand its <b>cost per unit</b> and what drives it. Each card shows the cost-per-unit broken into its seven components (agent, terminal, haulage, slot, fixed), worked back from revenue − contribution. Mixed 20′/40′ B/Ls are excluded. Source: Contribution_by_Booking.xlsx.</div>
+      <div class="hint">Search a port pair to understand its <b>cost per unit</b> and what drives it. Each pair uses its <b>own most recent week</b> of data (20′ and 40′ may each be from a different week, shown on the card). Cost is broken into its seven components, worked back from revenue − contribution. Mixed 20′/40′ B/Ls are excluded. Source: Contribution_by_Booking.xlsx.</div>
 
       <details class="method">
         <summary>How cost per unit is derived</summary>
@@ -1324,14 +1325,25 @@ function renderContrib(){
 }
 
 /* ===================== PAGE 6 : COST PER UNIT ===================== */
-let cuPairDef='polpod', cuBasis='inc', cuSize='all', cuSortV='cost', cuWeekVal=null, cuInit=false;
+let cuPairDef='polpod', cuBasis='inc', cuSize='all', cuSortV='cost', cuInit=false;
 const CU_COLORS={agent:'#1d6fe0',ldterm:'#1aa06d',ldhaul:'#37c98b',slot:'#8158d6',mtterm:'#d98a00',mthaul:'#f2b134',fixed:'#d6453c'};
+// Build, per port-pair-definition, the LATEST week's cell for each (pair,size).
+const CU_LATEST={};
+function cuBuildLatest(pairdef){
+  if(CU_LATEST[pairdef]) return CU_LATEST[pairdef];
+  const map={}; // key pair||size -> {cell, week}
+  // iterate weeks newest-first; first time we see a (pair,size) wins (that's its latest week)
+  for(let i=CW_WEEKS.length-1;i>=0;i--){
+    const wk=CW_WEEKS[i];
+    cwCells(pairdef, wk).forEach(c=>{
+      const k=c.pair+'||'+c.size;
+      if(!map[k]) map[k]={cell:c, week:wk};
+    });
+  }
+  return CU_LATEST[pairdef]=map;
+}
 function cuInitOnce(){
   if(cuInit) return; cuInit=true;
-  const sel=document.getElementById('cuWeek');
-  CW_WEEKS.forEach(w=>{const o=document.createElement('option');o.value=w;o.textContent=fmtWeek(w);sel.appendChild(o);});
-  cuWeekVal=CW_WEEKS[CW_WEEKS.length-1]; sel.value=cuWeekVal;
-  sel.onchange=()=>{cuWeekVal=sel.value;renderCostUnit();saveState&&saveState();};
   document.querySelectorAll('#cuPair button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#cuPair button').forEach(x=>x.classList.remove('on'));b.classList.add('on');cuPairDef=b.dataset.p;renderCostUnit();saveState&&saveState();});
   document.querySelectorAll('#cuBasis button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#cuBasis button').forEach(x=>x.classList.remove('on'));b.classList.add('on');cuBasis=b.dataset.b;renderCostUnit();saveState&&saveState();});
   document.querySelectorAll('#cuSize button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#cuSize button').forEach(x=>x.classList.remove('on'));b.classList.add('on');cuSize=b.dataset.z;renderCostUnit();saveState&&saveState();});
@@ -1340,28 +1352,35 @@ function cuInitOnce(){
 }
 function renderCostUnit(){
   cuInitOnce();
-  const wk=cuWeekVal||CW_WEEKS[CW_WEEKS.length-1];
-  const cells=cwCells(cuPairDef, wk);
-  // group by pair, summing the size(s) selected
-  const m={};
-  cells.forEach(c=>{
-    if(cuSize!=='all' && c.size!==cuSize) return;
-    const p=m[c.pair]||(m[c.pair]={pair:c.pair,units:0,bls:0,rev:0,contrib:0,comp:{}});
+  const latest=cuBuildLatest(cuPairDef);  // {pair||size:{cell,week}}
+  const wantSizes = cuSize==='all'? ['20','40'] : [cuSize];
+  // assemble per pair: each size carries its own latest week
+  const pairs={};
+  Object.keys(latest).forEach(key=>{
+    const [pair,size]=key.split('||');
+    if(!wantSizes.includes(size)) return;
+    const {cell:c, week}=latest[key];
     const rev = cuBasis==='inc'? c.revInc : c.revExc;
     const con = cuBasis==='inc'? c.cInc : c.cExc;
-    p.units+=c.units; p.bls+=c.bls; p.rev+=rev; p.contrib+=con;
-    CW_CK.forEach(k=>{ p.comp[k]=(p.comp[k]||0)+c[k]; });
+    const comp={}; CW_CK.forEach(k=>comp[k]=c[k]);
+    const totCost=CW_CK.reduce((a,k)=>a+(comp[k]||0),0);
+    const p=pairs[pair]||(pairs[pair]={pair, sizes:{}, units:0, bls:0, latestWeek:''});
+    p.sizes[size]={week,units:c.units,bls:c.bls,rev,con,comp,totCost,
+      costPU:c.units>0?totCost/c.units:null, contribPU:c.units>0?con/c.units:null, revPU:c.units>0?rev/c.units:null};
+    p.units+=c.units; p.bls+=c.bls;
+    if(week>p.latestWeek) p.latestWeek=week;
   });
-  let rows=Object.values(m).filter(p=>p.units>0).map(p=>{
-    const totCost=CW_CK.reduce((a,k)=>a+(p.comp[k]||0),0);
-    return {...p, totCost, costPU: totCost/p.units, contribPU: p.contrib/p.units, revPU: p.rev/p.units};
-  });
+  // blended cost/unit across selected sizes (sum cost ÷ sum units)
+  let rows=Object.values(pairs).map(p=>{
+    let tc=0,tu=0,tcon=0,trev=0; const comp={};
+    Object.values(p.sizes).forEach(s=>{ tc+=s.totCost; tu+=s.units; tcon+=s.con; trev+=s.rev; CW_CK.forEach(k=>comp[k]=(comp[k]||0)+s.comp[k]); });
+    return {...p, comp, totCost:tc, units:tu, costPU: tu>0?tc/tu:null, contribPU: tu>0?tcon/tu:null, revPU: tu>0?trev/tu:null};
+  }).filter(p=>p.units>0);
   const q=(document.getElementById('cuSearch').value||'').toUpperCase().trim();
   if(q) rows=rows.filter(r=>r.pair.toUpperCase().includes(q));
-  // sort
-  const cmp={cost:(a,b)=>b.costPU-a.costPU,costlow:(a,b)=>a.costPU-b.costPU,contrib:(a,b)=>b.contribPU-a.contribPU,contriblow:(a,b)=>a.contribPU-b.contribPU,units:(a,b)=>b.units-a.units,pair:(a,b)=>a.pair.localeCompare(b.pair)};
+  const cmp={cost:(a,b)=>b.costPU-a.costPU,costlow:(a,b)=>a.costPU-b.costPU,contrib:(a,b)=>b.contribPU-a.contribPU,contriblow:(a,b)=>a.contribPU-b.contribPU,units:(a,b)=>b.units-a.units,pair:(a,b)=>a.pair.localeCompare(b.pair),week:(a,b)=>b.latestWeek.localeCompare(a.latestWeek)};
   rows.sort(cmp[cuSortV]||cmp.cost);
-  document.getElementById('cuCount').textContent=rows.length+' port pair(s) · '+fmtWeek(wk)+' · '+(cuPairDef==='polpod'?'POL→POD':'POR→DEL')+' · '+(cuSize==='all'?'20′+40′':cuSize+'′')+' · '+(cuBasis==='inc'?'incl. doc':'excl. doc');
+  document.getElementById('cuCount').textContent=rows.length+' port pair(s) · each at its own latest week · '+(cuPairDef==='polpod'?'POL→POD':'POR→DEL')+' · '+(cuSize==='all'?'20′+40′':cuSize+'′')+' · '+(cuBasis==='inc'?'incl. doc':'excl. doc');
   const grid=document.getElementById('cuCards'), empty=document.getElementById('cuEmpty');
   if(!rows.length){ grid.innerHTML=''; empty.style.display='block'; return; } else empty.style.display='none';
   grid.innerHTML=rows.map(r=>{
@@ -1370,10 +1389,14 @@ function renderCostUnit(){
     const bar=parts.map(p=>p.v>0?`<span style="width:${(p.v/totForBar*100).toFixed(2)}%;background:${CU_COLORS[p.k]}" title="${p.label}"></span>`:'').join('');
     const comp=parts.sort((a,b)=>b.v-a.v).map(p=>`<div class="crow"><span class="cdot" style="background:${CU_COLORS[p.k]}"></span><span class="cnm">${p.label}</span><span class="cv">${usd(p.v/r.units)}</span><span class="cp">${r.totCost!==0?(p.v/r.totCost*100).toFixed(0)+'%':'—'}</span></div>`).join('');
     const cpu=r.contribPU; const cclass=cpu>=0?'pos':'neg';
+    // per-size week chips
+    const wk20 = r.sizes['20']? `<span class="cuwk">20′ ${fmtWeek(r.sizes['20'].week)} · ${fmt0(r.sizes['20'].units)}u</span>` : '';
+    const wk40 = r.sizes['40']? `<span class="cuwk">40′ ${fmtWeek(r.sizes['40'].week)} · ${fmt0(r.sizes['40'].units)}u</span>` : '';
     return `<div class="cucard">
-      <div class="cuhead"><span class="cupair">${r.pair}</span><span class="cusz">${cuSize==='all'?'20′+40′':cuSize+'′'} · ${fmt0(r.units)} units</span></div>
+      <div class="cuhead"><span class="cupair">${r.pair}</span></div>
+      <div class="cuwkrow">${wk20}${wk40}</div>
       <div class="cucost">${usd(r.costPU)}<span style="font-size:12px;color:var(--mut);font-weight:600"> / unit cost</span></div>
-      <div class="cusub"><span><b>Revenue/unit</b> ${usd(r.revPU)}</span><span><b>${r.bls}</b> B/L(s)</span></div>
+      <div class="cusub"><span><b>Revenue/unit</b> ${usd(r.revPU)}</span><span><b>${r.bls}</b> B/L(s) · ${fmt0(r.units)} units</span></div>
       <div class="cubar">${bar}</div>
       <div class="cucomp">${comp}</div>
       <div class="cucontrib"><span>Contribution / unit</span><span class="${cclass}">${usd(cpu)}</span></div>
@@ -1396,7 +1419,7 @@ function collectState(){
     hMode: (typeof hModeVal!=='undefined')?hModeVal:'browse',
     selVessel: (typeof selectedVessel!=='undefined')?selectedVessel:null,
     cwWeek: (typeof cwWeekVal!=='undefined')?cwWeekVal:null, cwPairDef: (typeof cwPairDef!=='undefined')?cwPairDef:'polpod', cwBasis: (typeof cwBasis!=='undefined')?cwBasis:'inc',
-    cuWeek:(typeof cuWeekVal!=='undefined')?cuWeekVal:null, cuPairDef:(typeof cuPairDef!=='undefined')?cuPairDef:'polpod', cuBasis:(typeof cuBasis!=='undefined')?cuBasis:'inc', cuSize:(typeof cuSize!=='undefined')?cuSize:'all',
+    cuPairDef:(typeof cuPairDef!=='undefined')?cuPairDef:'polpod', cuBasis:(typeof cuBasis!=='undefined')?cuBasis:'inc', cuSize:(typeof cuSize!=='undefined')?cuSize:'all',
     calc
   };
 }
@@ -1412,7 +1435,7 @@ function syncHash(){
   else if(s.page==='calc'){ hash='#calc'+(s.calc.cName?('/'+encodeURIComponent(s.calc.cName)):''); }
   else if(s.page==='sim'){ hash='#sim'; }
   else if(s.page==='contrib'){ hash='#contrib'+(s.cwWeek?('/'+encodeURIComponent(s.cwWeek)):''); }
-  else if(s.page==='costunit'){ hash='#costunit'+(s.cuWeek?('/'+encodeURIComponent(s.cuWeek)):''); }
+  else if(s.page==='costunit'){ hash='#costunit'; }
   const target=hash||location.pathname+location.search;
   try{ history.replaceState(null,'',target); }catch(e){ try{ location.hash = hash? hash.slice(1):''; }catch(_){} }
 }
@@ -1426,7 +1449,7 @@ function applyState(s, fromHash){
     if(s.scope && scopeSel){ const opt=[...scopeSel.options].some(o=>o.value===s.scope); if(opt) scopeSel.value=s.scope; }
     if(s.calc){ CALC_FIELDS.forEach(id=>{ if(s.calc[id]!=null && cg(id)) cg(id).value=s.calc[id]; }); }
     if(typeof cwInitOnce==='function'){ cwInitOnce(); if(s.cwPairDef){cwPairDef=s.cwPairDef;document.querySelectorAll('#cwPair button').forEach(b=>b.classList.toggle('on',b.dataset.p===cwPairDef));} if(s.cwBasis){cwBasis=s.cwBasis;document.querySelectorAll('#cwBasis button').forEach(b=>b.classList.toggle('on',b.dataset.b===cwBasis));} if(s.cwWeek){cwWeekVal=s.cwWeek; const ws=document.getElementById('cwWeek'); if(ws&&[...ws.options].some(o=>o.value===s.cwWeek))ws.value=s.cwWeek;} }
-    if(typeof cuInitOnce==='function'){ cuInitOnce(); if(s.cuPairDef){cuPairDef=s.cuPairDef;document.querySelectorAll('#cuPair button').forEach(b=>b.classList.toggle('on',b.dataset.p===cuPairDef));} if(s.cuBasis){cuBasis=s.cuBasis;document.querySelectorAll('#cuBasis button').forEach(b=>b.classList.toggle('on',b.dataset.b===cuBasis));} if(s.cuSize){cuSize=s.cuSize;document.querySelectorAll('#cuSize button').forEach(b=>b.classList.toggle('on',b.dataset.z===cuSize));} if(s.cuWeek){cuWeekVal=s.cuWeek; const ws=document.getElementById('cuWeek'); if(ws&&[...ws.options].some(o=>o.value===s.cuWeek))ws.value=s.cuWeek;} }
+    if(typeof cuInitOnce==='function'){ cuInitOnce(); if(s.cuPairDef){cuPairDef=s.cuPairDef;document.querySelectorAll('#cuPair button').forEach(b=>b.classList.toggle('on',b.dataset.p===cuPairDef));} if(s.cuBasis){cuBasis=s.cuBasis;document.querySelectorAll('#cuBasis button').forEach(b=>b.classList.toggle('on',b.dataset.b===cuBasis));} if(s.cuSize){cuSize=s.cuSize;document.querySelectorAll('#cuSize button').forEach(b=>b.classList.toggle('on',b.dataset.z===cuSize));} }
   }catch(e){}
   restoring=false;
   // re-render with restored values
@@ -1461,7 +1484,6 @@ function applyHash(){
   if(hp.page==='bunker' && hp.arg){ base.selVessel=hp.arg; }
   if(hp.page==='calc' && hp.arg){ base.calc=base.calc||{}; base.calc.cName=hp.arg; }
   if(hp.page==='contrib' && hp.arg){ base.cwWeek=hp.arg; }
-  if(hp.page==='costunit' && hp.arg){ base.cuWeek=hp.arg; }
   applyState(base, true);
   return true;
 }
